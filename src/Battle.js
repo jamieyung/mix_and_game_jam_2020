@@ -4,13 +4,16 @@ scene.init = function(input) {
   console.log("Battle", input)
 
   $ = {
+    phrase: "HELLO WORLD",
     keys: [],
     down_keys: {}
   }
 
+  // init key listeners
   for (let i = 65; i <= 90; i++) {
     $.keys.push(scene.input.keyboard.addKey(String.fromCharCode(i), true))
   }
+  $.keys.push(scene.input.keyboard.addKey("SPACE", true))
 }
 scene.update = function() {
   // Handle keyup events
@@ -24,7 +27,13 @@ scene.update = function() {
     var keyCode = key.keyCode
     if (keyCode in $.down_keys) continue
     if (!key.isDown) continue
-    console.log(String.fromCharCode(keyCode))
+    if ($.phrase.length > 0) {
+      var nextKeyCode = $.phrase.charCodeAt(0)
+      if (nextKeyCode == keyCode) {
+        $.phrase = $.phrase.substring(1)
+      }
+    }
+    console.log(String.fromCharCode(keyCode), $.phrase)
     $.down_keys[keyCode] = key
   }
 }
