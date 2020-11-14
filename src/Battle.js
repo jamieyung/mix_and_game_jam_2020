@@ -1,3 +1,4 @@
+import { EffectType, TargetType } from "./Card.js"
 import mkBattleRow from "./Battle/BattleRow.js"
 
 var scene = new Phaser.Scene({ key: "Battle" })
@@ -24,12 +25,13 @@ scene.init = function(input) {
 
   $ = {
     player: {
-      max_hp: input.player.hp,
+      max_hp: input.player.max_hp,
       hp: input.player.hp,
       deck: input.player.deck,
       gold: input.player.gold,
       ult: input.player.ult,
-      inventory: input.player.inventory
+      inventory: input.player.inventory,
+      health_text_obj: undefined // initialised further down
     },
     enemy: {
       max_hp: input.enemy.hp,
@@ -44,6 +46,9 @@ scene.init = function(input) {
     down_keys: {}
   }
 
+  $.player.health_text_obj = scene.add.text(40, 40, "Player HP: " + input.player.hp + "/" + input.player.max_hp)
+  $.player.health_text_obj.setFontSize(40)
+
   $.enemy.health_text_obj = scene.add.text(500, 40, "Enemy HP: " + input.enemy.hp)
   $.enemy.health_text_obj.setFontSize(40)
 
@@ -57,7 +62,7 @@ scene.init = function(input) {
     })
     forbidden_initial_characters.push(battleRow.orig_text[0])
     battleRow.root.x = 100
-    battleRow.root.y = 100 + i*40
+    battleRow.root.y = 100 + i*60
     $.battleRows.push(battleRow)
   }
 
@@ -91,8 +96,7 @@ scene.update = function() {
         $.current_battleRow.remaining = $.current_battleRow.remaining.substring(1)
         $.current_battleRow.text_obj.text = $.current_battleRow.remaining
         if ($.current_battleRow.remaining.length === 0) {
-          $.enemy.hp = Math.max(0, $.enemy.hp - $.current_battleRow.card.damage)
-          $.enemy.health_text_obj.text = "Enemy HP: " + $.enemy.hp
+          executeCardEffect($.current_battleRow.card)
           redrawBattleRow($.current_battleRow)
         }
       } else { // mistake, reset the word
@@ -117,6 +121,24 @@ scene.update = function() {
   }
 }
 
+function executeCardEffect(card) {
+  if (card.effect.type === EffectType.DAMAGE) {
+    if (card.target === TargetType.ENEMY) {
+      $.enemy.hp = Math.max(0, $.enemy.hp - card.effect.amount)
+      $.enemy.health_text_obj.text = "Enemy HP: " + $.enemy.hp
+    } else { // TargetType.PLAYER
+      // TODO
+    }
+  } else if (card.effect.type === EffectType.HEAL) {
+    if (card.target === TargetType.ENEMY) {
+      // TODO
+    } else { // TargetType.PLAYER
+      $.player.hp = Math.min($.player.max_hp, $.player.hp + card.effect.amount)
+      $.player.health_text_obj.text = "Player HP: " + $.player.hp + "/" + $.player.max_hp
+    }
+  }
+}
+
 function redrawBattleRow(battleRow) {
   battleRow.destroy()
 
@@ -136,7 +158,7 @@ function redrawBattleRow(battleRow) {
     if ($.battleRows[i] === battleRow) {
       $.battleRows[i] = newBattleRow
       newBattleRow.root.x = 100
-      newBattleRow.root.y = 100 + i*40
+      newBattleRow.root.y = 100 + i*60
       break
     }
   }

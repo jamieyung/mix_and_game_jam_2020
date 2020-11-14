@@ -19,11 +19,11 @@ export default function (args) {
   }
   var root = args.scene.add.container(0, 0)
 
-  var damage_text_obj = args.scene.add.text(0, 0, args.card.damage)
-  damage_text_obj.setFontSize(20)
-  root.add(damage_text_obj)
+  var card_name_text_obj = args.scene.add.text(0, 0, args.card.name)
+  card_name_text_obj.setFontSize(20)
+  root.add(card_name_text_obj)
 
-  var text_obj = args.scene.add.text(15, 0, orig_text)
+  var text_obj = args.scene.add.text(0, 15, orig_text)
   text_obj.setFontSize(40)
   root.add(text_obj)
 
@@ -33,9 +33,8 @@ export default function (args) {
     card: args.card,
     root: root,
     text_obj: text_obj,
-    damage: Phaser.Math.RND.integerInRange(1, 5),
     destroy: function () {
-      damage_text_obj.destroy()
+      card_name_text_obj.destroy()
       text_obj.destroy()
       root.destroy()
     }
