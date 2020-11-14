@@ -1,6 +1,6 @@
-var scene = new Phaser.Scene({ key: "Battle" })
+import mkCard from "./Battle/Card.js"
 
-var words = ["Adult","Aeroplane","Air","Airforce","Airport","Album","Alphabet","Apple","Arm","Army","Baby","Backpack","Balloon","Banana","Bank","Barbecue","Bathroom","Bathtub","Bed","Bee","Bird","Bomb","Book","Boss","Bottle","Bowl","Box","Boy","Brain","Bridge","Butterfly","Button","Cappuccino","Car","Carpet","Carrot","Cave","Chair","Chess","Chief","Child","Chisel","Chocolates","Church","Church","Circle","Circus","Circus","Clock","Clown","Coffee","Comet","Compact","Compass","Computer","Crystal","Cup","Cycle","Database","Desk","Diamond","Dress","Drill","Drink","Drum","Dung","Ears","Earth","Egg","Electricity","Elephant","Eraser","Explosive","Eyes","Family","Fan","Feather","Festival","Film","Finger","Fire","Floodlight","Flower","Foot","Fork","Freeway","Fruit","Fungus","Game","Garden","Gas","Gate","Gemstone","Girl","Gloves","God","Grapes","Guitar","Hammer","Hat","Hieroglyph","Highway","Horoscope","Horse","Hose","Ice","Insect","Jet","Junk","Kaleidoscope","Kitchen","Knife","Leather","Leg","Library","Liquid","Magnet","Man","Map","Maze","Meat","Meteor","Microscope","Milk","Milkshake","Mist","Money","Monster","Mosquito","Mouth","Nail","Navy","Necklace","Needle","Onion","PaintBrush","Pants","Parachute","Passport","Pebble","Pendulum","Pepper","Perfume","Pillow","Plane","Planet","Pocket","Post","Potato","Printer","Prison","Pyramid","Radar","Rainbow","Record","Restaurant","Rifle","Ring","Robot","Rock","Rocket","Roof","Room","Rope","Saddle","Salt","Sandpaper","Sandwich","Satellite","School","Sex","Ship","Shoes","Shop","Shower","Signature","Skeleton","Snail","Software","Solid","Space","Spectrum","Sphere","Spice","Spiral","Spoon","Sports","Spot","Square","Staircase","Star","Stomach","Sun","Sunglasses","Surveyor","Swimming","Sword","Table","Tapestry","Teeth","Telescope","Television","Tennis","Thermometer","Tiger","Toilet","Tongue","Torch","Torpedo","Train","Treadmill","Triangle","Tunnel","Typewriter","Umbrella","Vacuum","Vampire","Videotape","Vulture","Water","Weapon","Web","Wheelchair","Window","Woman","Worm"]
+var scene = new Phaser.Scene({ key: "Battle" })
 
 var $ = {}
 
@@ -21,15 +21,16 @@ scene.init = function(input) {
 
   // init cards
   // TODO deal with words having the same starting character (prevent)
+  var forbidden_initial_characters = []
   for (let i = 0; i < 6; i++) {
-    var orig_text = Phaser.Math.RND.pick(words)
-    var text_obj = scene.add.text(100, 100 + i*40, orig_text)
-    text_obj.setFontSize(40)
-    $.cards.push({
-      orig: orig_text,
-      remaining: orig_text,
-      text_obj: text_obj
+    var card = mkCard({
+      forbidden_initial_characters: forbidden_initial_characters,
+      scene: scene
     })
+    forbidden_initial_characters.push(card.orig_text[0])
+    card.text_obj.x = 100
+    card.text_obj.y = 100 + i*40
+    $.cards.push(card)
   }
 
   // init key listeners
@@ -61,22 +62,10 @@ scene.update = function() {
         $.current_card.remaining = $.current_card.remaining.substring(1)
         $.current_card.text_obj.text = $.current_card.remaining
         if ($.current_card.remaining.length === 0) {
-          // regenerate card
-          var orig_text = Phaser.Math.RND.pick(words)
-          $.current_card.orig = orig_text
-          $.current_card.remaining = orig_text
-          $.current_card.text_obj.text = orig_text
-          $.current_card.text_obj.setColor("#ffffff")
-          $.current_card = undefined
+          redrawCard($.current_card)
         }
       } else {
-        // regenerate card
-        var orig_text = Phaser.Math.RND.pick(words)
-        $.current_card.orig = orig_text
-        $.current_card.remaining = orig_text
-        $.current_card.text_obj.text = orig_text
-        $.current_card.text_obj.setColor("#ffffff")
-        $.current_card = undefined
+        redrawCard($.current_card)
       }
     } else {
       // no current card, try find one
@@ -92,6 +81,32 @@ scene.update = function() {
       }
     }
   }
+}
+
+function redrawCard(card) {
+  card.text_obj.destroy()
+
+  var forbidden_initial_characters = []
+  for (var otherCard of $.cards) {
+    if (otherCard === card) continue
+    forbidden_initial_characters.push(otherCard.orig_text[0])
+  }
+
+  var newCard = mkCard({
+    forbidden_initial_characters: forbidden_initial_characters,
+    scene: scene
+  })
+
+  for (let i = 0; i < $.cards.length; i++) {
+    if ($.cards[i] === card) {
+      $.cards[i] = newCard
+      newCard.text_obj.x = 100
+      newCard.text_obj.y = 100 + i*40
+      break
+    }
+  }
+
+  $.current_card = undefined
 }
 
 export default scene
