@@ -19,7 +19,8 @@ var $ = {}
 // input.enemy.deck
 // input.enemy.characters_per_second
 // input.enemy.casting_cooldown_ms
-// input.enemy.typing_success_rate
+// input.enemy.n_characters_between_mistakes.avg
+// input.enemy.n_characters_between_mistakes.std
 
 scene.init = function(input) {
   console.log("Battle", input)
@@ -32,7 +33,7 @@ scene.init = function(input) {
       gold: input.player.gold,
       ult: input.player.ult,
       inventory: input.player.inventory,
-      hand: [],
+      hand: [], // initialised further down
       handX: 100,
       currentHandCard: undefined,
       health_text_obj: undefined, // initialised further down
@@ -44,8 +45,9 @@ scene.init = function(input) {
       characters_per_second: input.enemy.characters_per_second,
       casting_cooldown_ms: input.enemy.casting_cooldown_ms,
       cur_casting_cooldown_ms: input.enemy.casting_cooldown_ms,
-      typing_success_rate: input.enemy.typing_success_rate,
-      hand: [],
+      n_characters_between_mistakes: input.enemy.n_characters_between_mistakes,
+      characters_until_next_mistake: 0, // initialised further down
+      hand: [], // initialised further down
       handX: 600,
       currentHandCard: undefined,
       health_text_obj: undefined, // initialised further down
@@ -55,14 +57,14 @@ scene.init = function(input) {
     down_keys: {}
   }
 
+  initHand($.player, 100)
   $.player.health_text_obj = scene.add.text(40, 40, "Player HP: " + input.player.hp + "/" + input.player.max_hp)
   $.player.health_text_obj.setFontSize(40)
 
+  recalcEnemyCharactersUntilNextMistake()
+  initHand($.enemy, 100)
   $.enemy.health_text_obj = scene.add.text(500, 40, "Enemy HP: " + input.enemy.hp + "/" + input.enemy.hp)
   $.enemy.health_text_obj.setFontSize(40)
-
-  initHand($.player, 100)
-  initHand($.enemy, 100)
 
   // init key listeners
   for (let i = 65; i <= 90; i++) {
@@ -177,10 +179,10 @@ scene.update = function(time, dt) {
   if ($.enemy.currentHandCard) {
     if ($.enemy.ms_until_next_char > 0) {
       $.enemy.ms_until_next_char -= dt
-    } else {
+    } else { // make enemy type a character
       $.enemy.ms_until_next_char = 1000 / $.enemy.characters_per_second
-      var wasSuccessfulKeystroke = Phaser.Math.RND.realInRange(0, 1) <= $.enemy.typing_success_rate
-      if (wasSuccessfulKeystroke) {
+      if ($.enemy.characters_until_next_mistake > 0) { // successful keystroke
+        $.enemy.characters_until_next_mistake--
         $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.remaining.substring(1)
         $.enemy.currentHandCard.text_obj.text = $.enemy.currentHandCard.remaining
         if ($.enemy.currentHandCard.remaining.length === 0) {
@@ -189,6 +191,7 @@ scene.update = function(time, dt) {
           $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
         }
       } else { // mistake, reset the word
+        recalcEnemyCharactersUntilNextMistake()
         $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.orig_text
         $.enemy.currentHandCard.text_obj.text = $.enemy.currentHandCard.remaining
         $.enemy.currentHandCard.text_obj.setColor("#ffffff")
@@ -204,6 +207,11 @@ scene.update = function(time, dt) {
       $.enemy.currentHandCard.text_obj.setColor("#55ff55")
     }
   }
+}
+
+function recalcEnemyCharactersUntilNextMistake() {
+  var n = $.enemy.n_characters_between_mistakes.avg + $.enemy.n_characters_between_mistakes.std * Phaser.Math.RND.normal()
+  $.enemy.characters_until_next_mistake = Math.max(Math.round(n), 1)
 }
 
 function executeCardEffect(asPlayer, card) {
