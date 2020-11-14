@@ -1,5 +1,4 @@
 import { EffectType, TargetType } from "./Card.js"
-import mkBattleRow from "./Battle/BattleRow.js"
 
 var scene = new Phaser.Scene({ key: "Battle" })
 
@@ -31,6 +30,8 @@ scene.init = function(input) {
       gold: input.player.gold,
       ult: input.player.ult,
       inventory: input.player.inventory,
+      hand: [],
+      current_handCard: undefined,
       health_text_obj: undefined // initialised further down
     },
     enemy: {
@@ -38,10 +39,10 @@ scene.init = function(input) {
       hp: input.enemy.hp,
       deck: input.enemy.deck,
       cps: input.enemy.cps,
+      hand: [],
+      current_handCard: undefined,
       health_text_obj: undefined // initialised further down
     },
-    battleRows: [],
-    current_battleRow: undefined,
     keys: [],
     down_keys: {}
   }
@@ -52,19 +53,8 @@ scene.init = function(input) {
   $.enemy.health_text_obj = scene.add.text(500, 40, "Enemy HP: " + input.enemy.hp)
   $.enemy.health_text_obj.setFontSize(40)
 
-  // init battleRows
-  var forbidden_initial_characters = []
-  for (let i = 0; i < 6; i++) {
-    var battleRow = mkBattleRow({
-      forbidden_initial_characters: forbidden_initial_characters,
-      card: Phaser.Math.RND.pick($.player.deck),
-      scene: scene
-    })
-    forbidden_initial_characters.push(battleRow.orig_text[0])
-    battleRow.root.x = 100
-    battleRow.root.y = 100 + i*60
-    $.battleRows.push(battleRow)
-  }
+  initHand($.player, 100, 100)
+  initHand($.enemy, 600, 100)
 
   // init key listeners
   for (let i = 65; i <= 90; i++) {
@@ -72,8 +62,63 @@ scene.init = function(input) {
   }
   $.keys.push(scene.input.keyboard.addKey("SPACE", true))
   $.keys.push(scene.input.keyboard.addKey("ENTER", true))
+}
 
-  console.log($)
+function initHand(target, x, y) {
+  var forbidden_initial_characters = []
+  for (let i = 0; i < 6; i++) {
+    var handCard = mkHandCard({
+      forbidden_initial_characters: forbidden_initial_characters,
+      card: Phaser.Math.RND.pick(target.deck),
+      scene: scene
+    })
+    forbidden_initial_characters.push(handCard.orig_text[0])
+    handCard.root.x = x
+    handCard.root.y = y + i*60
+    target.hand.push(handCard)
+  }
+}
+
+var words = ["Adult","Aeroplane","Air","Airforce","Airport","Album","Alphabet","Apple","Arm","Army","Baby","Backpack","Balloon","Banana","Bank","Barbecue","Bathroom","Bathtub","Bed","Bee","Bird","Bomb","Book","Boss","Bottle","Bowl","Box","Boy","Brain","Bridge","Butterfly","Button","Cappuccino","Car","Carpet","Carrot","Cave","Chair","Chess","Chief","Child","Chisel","Chocolates","Church","Church","Circle","Circus","Circus","Clock","Clown","Coffee","Comet","Compact","Compass","Computer","Crystal","Cup","Cycle","Database","Desk","Diamond","Dress","Drill","Drink","Drum","Dung","Ears","Earth","Egg","Electricity","Elephant","Eraser","Explosive","Eyes","Family","Fan","Feather","Festival","Film","Finger","Fire","Floodlight","Flower","Foot","Fork","Freeway","Fruit","Fungus","Game","Garden","Gas","Gate","Gemstone","Girl","Gloves","God","Grapes","Guitar","Hammer","Hat","Hieroglyph","Highway","Horoscope","Horse","Hose","Ice","Insect","Jet","Junk","Kaleidoscope","Kitchen","Knife","Leather","Leg","Library","Liquid","Magnet","Man","Map","Maze","Meat","Meteor","Microscope","Milk","Milkshake","Mist","Money","Monster","Mosquito","Mouth","Nail","Navy","Necklace","Needle","Onion","PaintBrush","Pants","Parachute","Passport","Pebble","Pendulum","Pepper","Perfume","Pillow","Plane","Planet","Pocket","Post","Potato","Printer","Prison","Pyramid","Radar","Rainbow","Record","Restaurant","Rifle","Ring","Robot","Rock","Rocket","Roof","Room","Rope","Saddle","Salt","Sandpaper","Sandwich","Satellite","School","Sex","Ship","Shoes","Shop","Shower","Signature","Skeleton","Snail","Software","Solid","Space","Spectrum","Sphere","Spice","Spiral","Spoon","Sports","Spot","Square","Staircase","Star","Stomach","Sun","Sunglasses","Surveyor","Swimming","Sword","Table","Tapestry","Teeth","Telescope","Television","Tennis","Thermometer","Tiger","Toilet","Tongue","Torch","Torpedo","Train","Treadmill","Triangle","Tunnel","Typewriter","Umbrella","Vacuum","Vampire","Videotape","Vulture","Water","Weapon","Web","Wheelchair","Window","Woman","Worm"]
+
+// args.forbidden_initial_characters - array of characters (case-insensitive)
+// args.card - the card from the deck
+function mkHandCard(args) {
+  var orig_text
+  for (let j = 0; j < 50; j++) {
+    orig_text = Phaser.Math.RND.pick(words)
+    var conflict_found = false
+    var initial_character = orig_text[0].toUpperCase()
+    for (var c of args.forbidden_initial_characters) {
+      if (c.toUpperCase() === initial_character) {
+        conflict_found = true
+        break
+      }
+    }
+    if (!conflict_found) break
+  }
+  var root = scene.add.container(0, 0)
+
+  var card_name_text_obj = scene.add.text(0, 0, args.card.name)
+  card_name_text_obj.setFontSize(20)
+  root.add(card_name_text_obj)
+
+  var text_obj = scene.add.text(0, 15, orig_text)
+  text_obj.setFontSize(40)
+  root.add(text_obj)
+
+  return {
+    orig_text: orig_text,
+    remaining: orig_text,
+    card: args.card,
+    root: root,
+    text_obj: text_obj,
+    destroy: function () {
+      card_name_text_obj.destroy()
+      text_obj.destroy()
+      root.destroy()
+    }
+  }
 }
 
 scene.update = function() {
@@ -90,80 +135,79 @@ scene.update = function() {
     if (!key.isDown) continue
     $.down_keys[keyCode] = key
 
-    if ($.current_battleRow) {
-      var nextKeyCode = $.current_battleRow.remaining[0].toUpperCase().charCodeAt(0)
+    if ($.player.current_handCard) {
+      var nextKeyCode = $.player.current_handCard.remaining[0].toUpperCase().charCodeAt(0)
       if (nextKeyCode === keyCode) {
-        $.current_battleRow.remaining = $.current_battleRow.remaining.substring(1)
-        $.current_battleRow.text_obj.text = $.current_battleRow.remaining
-        if ($.current_battleRow.remaining.length === 0) {
-          executeCardEffect($.current_battleRow.card)
-          redrawBattleRow($.current_battleRow)
+        $.player.current_handCard.remaining = $.player.current_handCard.remaining.substring(1)
+        $.player.current_handCard.text_obj.text = $.player.current_handCard.remaining
+        if ($.player.current_handCard.remaining.length === 0) {
+          executeCardEffect(true, $.player.current_handCard.card)
+          redrawHandCard($.player.current_handCard)
         }
       } else { // mistake, reset the word
-        $.current_battleRow.remaining = $.current_battleRow.orig_text
-        $.current_battleRow.text_obj.text = $.current_battleRow.remaining
-        $.current_battleRow.text_obj.setColor("#ffffff")
-        $.current_battleRow = undefined
+        $.player.current_handCard.remaining = $.player.current_handCard.orig_text
+        $.player.current_handCard.text_obj.text = $.player.current_handCard.remaining
+        $.player.current_handCard.text_obj.setColor("#ffffff")
+        $.player.current_handCard = undefined
       }
     } else {
-      // no current battleRow, try find one
-      for (var battleRow of $.battleRows) {
-        if (battleRow.remaining.length === 0) continue
-        var nextKeyCode = battleRow.remaining[0].toUpperCase().charCodeAt(0)
+      // no current handCard, try find one
+      for (var handCard of $.player.hand) {
+        if (handCard.remaining.length === 0) continue
+        var nextKeyCode = handCard.remaining[0].toUpperCase().charCodeAt(0)
         if (nextKeyCode !== keyCode) continue
-        battleRow.remaining = battleRow.remaining.substring(1)
-        battleRow.text_obj.text = battleRow.remaining
-        $.current_battleRow = battleRow
-        battleRow.text_obj.setColor("#55ff55")
+        handCard.remaining = handCard.remaining.substring(1)
+        handCard.text_obj.text = handCard.remaining
+        $.player.current_handCard = handCard
+        handCard.text_obj.setColor("#55ff55")
         break
       }
     }
   }
 }
 
-function executeCardEffect(card) {
+function executeCardEffect(asPlayer, card) {
+  var self = asPlayer ? $.player : $.enemy
+  var opponent = asPlayer ? $.enemy : $.player
+  var target = card.target === TargetType.SELF ? self : opponent
+  var selfText = asPlayer ? "Player" : "Enemy"
+  var opponentText = asPlayer ? "Enemy" : "Player"
+  var targetText = card.target === TargetType.SELF ? selfText : opponentText
+
   if (card.effect.type === EffectType.DAMAGE) {
-    if (card.target === TargetType.ENEMY) {
-      $.enemy.hp = Math.max(0, $.enemy.hp - card.effect.amount)
-      $.enemy.health_text_obj.text = "Enemy HP: " + $.enemy.hp
-    } else { // TargetType.PLAYER
-      // TODO
-    }
+    target.hp = Math.max(0, target.hp - card.effect.amount)
+    target.health_text_obj.text = targetText + " HP: " + target.hp
   } else if (card.effect.type === EffectType.HEAL) {
-    if (card.target === TargetType.ENEMY) {
-      // TODO
-    } else { // TargetType.PLAYER
-      $.player.hp = Math.min($.player.max_hp, $.player.hp + card.effect.amount)
-      $.player.health_text_obj.text = "Player HP: " + $.player.hp + "/" + $.player.max_hp
-    }
+    target.hp = Math.min(target.max_hp, target.hp + card.effect.amount)
+    target.health_text_obj.text = targetText + " HP: " + target.hp + "/" + target.max_hp
   }
 }
 
-function redrawBattleRow(battleRow) {
-  battleRow.destroy()
+function redrawHandCard(handCard) {
+  handCard.destroy()
 
   var forbidden_initial_characters = []
-  for (var otherBattleRow of $.battleRows) {
-    if (otherBattleRow === battleRow) continue
-    forbidden_initial_characters.push(otherBattleRow.orig_text[0])
+  for (var otherHandCard of $.player.hand) {
+    if (otherHandCard === handCard) continue
+    forbidden_initial_characters.push(otherHandCard.orig_text[0])
   }
 
-  var newBattleRow = mkBattleRow({
+  var newHandCard = mkHandCard({
     forbidden_initial_characters: forbidden_initial_characters,
     card: Phaser.Math.RND.pick($.player.deck),
     scene: scene
   })
 
-  for (let i = 0; i < $.battleRows.length; i++) {
-    if ($.battleRows[i] === battleRow) {
-      $.battleRows[i] = newBattleRow
-      newBattleRow.root.x = 100
-      newBattleRow.root.y = 100 + i*60
+  for (let i = 0; i < $.player.hand.length; i++) {
+    if ($.player.hand[i] === handCard) {
+      $.player.hand[i] = newHandCard
+      newHandCard.root.x = 100
+      newHandCard.root.y = 100 + i*60
       break
     }
   }
 
-  $.current_battleRow = undefined
+  $.player.current_handCard = undefined
 }
 
 export default scene

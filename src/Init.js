@@ -23,7 +23,9 @@ scene.update = function() {
     },
     enemy: {
       hp: 10,
-      deck: [],
+      deck: [
+        getCardById(2),
+      ],
       cps: 6
     }
   })
