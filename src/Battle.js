@@ -35,13 +35,17 @@ scene.init = function(input) {
       max_hp: input.enemy.hp,
       hp: input.enemy.hp,
       deck: input.enemy.deck,
-      cps: input.enemy.cps
+      cps: input.enemy.cps,
+      health_text_obj: undefined // initialised further down
     },
     battleRows: [],
     current_battleRow: undefined,
     keys: [],
     down_keys: {}
   }
+
+  $.enemy.health_text_obj = scene.add.text(500, 40, "Enemy HP: " + input.enemy.hp)
+  $.enemy.health_text_obj.setFontSize(40)
 
   // init battleRows
   var forbidden_initial_characters = []
@@ -79,7 +83,6 @@ scene.update = function() {
     var keyCode = key.keyCode
     if (keyCode in $.down_keys) continue
     if (!key.isDown) continue
-    console.log(String.fromCharCode(keyCode))
     $.down_keys[keyCode] = key
 
     if ($.current_battleRow) {
@@ -88,10 +91,15 @@ scene.update = function() {
         $.current_battleRow.remaining = $.current_battleRow.remaining.substring(1)
         $.current_battleRow.text_obj.text = $.current_battleRow.remaining
         if ($.current_battleRow.remaining.length === 0) {
+          $.enemy.hp = Math.max(0, $.enemy.hp - $.current_battleRow.card.damage)
+          $.enemy.health_text_obj.text = "Enemy HP: " + $.enemy.hp
           redrawBattleRow($.current_battleRow)
         }
-      } else {
-        redrawBattleRow($.current_battleRow)
+      } else { // mistake, reset the word
+        $.current_battleRow.remaining = $.current_battleRow.orig_text
+        $.current_battleRow.text_obj.text = $.current_battleRow.remaining
+        $.current_battleRow.text_obj.setColor("#ffffff")
+        $.current_battleRow = undefined
       }
     } else {
       // no current battleRow, try find one
