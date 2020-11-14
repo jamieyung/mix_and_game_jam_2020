@@ -2,7 +2,7 @@ var scene = new Phaser.Scene({ key: "Init" })
 var $ = {}
 scene.init = function(input) {
   $ = {}
-  $.asdf = scene.input.keyboard.addKey("W")
+  $.asdf = scene.input.keyboard.addKey("ENTER")
   console.log("Init", input)
 }
 scene.update = function() {
