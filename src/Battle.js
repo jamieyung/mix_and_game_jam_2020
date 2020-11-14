@@ -207,6 +207,13 @@ scene.update = function(time, dt) {
       $.enemy.currentHandCard.text_obj.setColor("#55ff55")
     }
   }
+
+  // Check for end of battle
+  if ($.player.hp <= 0) {
+    scene.scene.start("Init")
+  } else if ($.enemy.hp <= 0) {
+    scene.scene.start("Init")
+  }
 }
 
 function recalcEnemyCharactersUntilNextMistake() {
