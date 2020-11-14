@@ -24,9 +24,12 @@ scene.update = function() {
     enemy: {
       hp: 10,
       deck: [
+        getCardById(1),
         getCardById(2),
       ],
-      cps: 6
+      characters_per_second: 6,
+      casting_cooldown_ms: 500,
+      typing_success_rate: 0.98
     }
   })
 }

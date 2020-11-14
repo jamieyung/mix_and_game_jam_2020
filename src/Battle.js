@@ -17,7 +17,9 @@ var $ = {}
 // input.player.inventory TODO
 // input.enemy.hp
 // input.enemy.deck
-// input.enemy.cps
+// input.enemy.characters_per_second
+// input.enemy.casting_cooldown_ms
+// input.enemy.typing_success_rate
 
 scene.init = function(input) {
   console.log("Battle", input)
@@ -31,17 +33,23 @@ scene.init = function(input) {
       ult: input.player.ult,
       inventory: input.player.inventory,
       hand: [],
-      current_handCard: undefined,
-      health_text_obj: undefined // initialised further down
+      handX: 100,
+      currentHandCard: undefined,
+      health_text_obj: undefined, // initialised further down
     },
     enemy: {
       max_hp: input.enemy.hp,
       hp: input.enemy.hp,
       deck: input.enemy.deck,
-      cps: input.enemy.cps,
+      characters_per_second: input.enemy.characters_per_second,
+      casting_cooldown_ms: input.enemy.casting_cooldown_ms,
+      cur_casting_cooldown_ms: input.enemy.casting_cooldown_ms,
+      typing_success_rate: input.enemy.typing_success_rate,
       hand: [],
-      current_handCard: undefined,
-      health_text_obj: undefined // initialised further down
+      handX: 600,
+      currentHandCard: undefined,
+      health_text_obj: undefined, // initialised further down
+      ms_until_next_char: 0
     },
     keys: [],
     down_keys: {}
@@ -50,11 +58,11 @@ scene.init = function(input) {
   $.player.health_text_obj = scene.add.text(40, 40, "Player HP: " + input.player.hp + "/" + input.player.max_hp)
   $.player.health_text_obj.setFontSize(40)
 
-  $.enemy.health_text_obj = scene.add.text(500, 40, "Enemy HP: " + input.enemy.hp)
+  $.enemy.health_text_obj = scene.add.text(500, 40, "Enemy HP: " + input.enemy.hp + "/" + input.enemy.hp)
   $.enemy.health_text_obj.setFontSize(40)
 
-  initHand($.player, 100, 100)
-  initHand($.enemy, 600, 100)
+  initHand($.player, 100)
+  initHand($.enemy, 100)
 
   // init key listeners
   for (let i = 65; i <= 90; i++) {
@@ -64,7 +72,7 @@ scene.init = function(input) {
   $.keys.push(scene.input.keyboard.addKey("ENTER", true))
 }
 
-function initHand(target, x, y) {
+function initHand(target, y) {
   var forbidden_initial_characters = []
   for (let i = 0; i < 6; i++) {
     var handCard = mkHandCard({
@@ -73,7 +81,7 @@ function initHand(target, x, y) {
       scene: scene
     })
     forbidden_initial_characters.push(handCard.orig_text[0])
-    handCard.root.x = x
+    handCard.root.x = target.handX
     handCard.root.y = y + i*60
     target.hand.push(handCard)
   }
@@ -121,7 +129,7 @@ function mkHandCard(args) {
   }
 }
 
-scene.update = function() {
+scene.update = function(time, dt) {
   // Handle keyup events
   for (const [keyCode, key] of Object.entries($.down_keys)) {
     if (key.isDown) continue
@@ -135,20 +143,20 @@ scene.update = function() {
     if (!key.isDown) continue
     $.down_keys[keyCode] = key
 
-    if ($.player.current_handCard) {
-      var nextKeyCode = $.player.current_handCard.remaining[0].toUpperCase().charCodeAt(0)
+    if ($.player.currentHandCard) {
+      var nextKeyCode = $.player.currentHandCard.remaining[0].toUpperCase().charCodeAt(0)
       if (nextKeyCode === keyCode) {
-        $.player.current_handCard.remaining = $.player.current_handCard.remaining.substring(1)
-        $.player.current_handCard.text_obj.text = $.player.current_handCard.remaining
-        if ($.player.current_handCard.remaining.length === 0) {
-          executeCardEffect(true, $.player.current_handCard.card)
-          redrawHandCard($.player.current_handCard)
+        $.player.currentHandCard.remaining = $.player.currentHandCard.remaining.substring(1)
+        $.player.currentHandCard.text_obj.text = $.player.currentHandCard.remaining
+        if ($.player.currentHandCard.remaining.length === 0) {
+          executeCardEffect(true, $.player.currentHandCard.card)
+          redrawCurrentHandCard($.player)
         }
       } else { // mistake, reset the word
-        $.player.current_handCard.remaining = $.player.current_handCard.orig_text
-        $.player.current_handCard.text_obj.text = $.player.current_handCard.remaining
-        $.player.current_handCard.text_obj.setColor("#ffffff")
-        $.player.current_handCard = undefined
+        $.player.currentHandCard.remaining = $.player.currentHandCard.orig_text
+        $.player.currentHandCard.text_obj.text = $.player.currentHandCard.remaining
+        $.player.currentHandCard.text_obj.setColor("#ffffff")
+        $.player.currentHandCard = undefined
       }
     } else {
       // no current handCard, try find one
@@ -158,10 +166,42 @@ scene.update = function() {
         if (nextKeyCode !== keyCode) continue
         handCard.remaining = handCard.remaining.substring(1)
         handCard.text_obj.text = handCard.remaining
-        $.player.current_handCard = handCard
+        $.player.currentHandCard = handCard
         handCard.text_obj.setColor("#55ff55")
         break
       }
+    }
+  }
+
+  // Enemy update
+  if ($.enemy.currentHandCard) {
+    if ($.enemy.ms_until_next_char > 0) {
+      $.enemy.ms_until_next_char -= dt
+    } else {
+      $.enemy.ms_until_next_char = 1000 / $.enemy.characters_per_second
+      var wasSuccessfulKeystroke = Phaser.Math.RND.realInRange(0, 1) <= $.enemy.typing_success_rate
+      if (wasSuccessfulKeystroke) {
+        $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.remaining.substring(1)
+        $.enemy.currentHandCard.text_obj.text = $.enemy.currentHandCard.remaining
+        if ($.enemy.currentHandCard.remaining.length === 0) {
+          executeCardEffect(false, $.enemy.currentHandCard.card)
+          redrawCurrentHandCard($.enemy)
+          $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
+        }
+      } else { // mistake, reset the word
+        $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.orig_text
+        $.enemy.currentHandCard.text_obj.text = $.enemy.currentHandCard.remaining
+        $.enemy.currentHandCard.text_obj.setColor("#ffffff")
+        $.enemy.currentHandCard = undefined
+        $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
+      }
+    }
+  } else { // no currentHandCard
+    if ($.enemy.cur_casting_cooldown_ms > 0) {
+      $.enemy.cur_casting_cooldown_ms -= dt
+    } else {
+      $.enemy.currentHandCard = Phaser.Math.RND.pick($.enemy.hand)
+      $.enemy.currentHandCard.text_obj.setColor("#55ff55")
     }
   }
 }
@@ -176,38 +216,39 @@ function executeCardEffect(asPlayer, card) {
 
   if (card.effect.type === EffectType.DAMAGE) {
     target.hp = Math.max(0, target.hp - card.effect.amount)
-    target.health_text_obj.text = targetText + " HP: " + target.hp
+    target.health_text_obj.text = targetText + " HP: " + target.hp + "/" + target.max_hp
   } else if (card.effect.type === EffectType.HEAL) {
     target.hp = Math.min(target.max_hp, target.hp + card.effect.amount)
     target.health_text_obj.text = targetText + " HP: " + target.hp + "/" + target.max_hp
   }
 }
 
-function redrawHandCard(handCard) {
-  handCard.destroy()
+function redrawCurrentHandCard(target) {
+  if (!target.currentHandCard) return
+  target.currentHandCard.destroy()
 
   var forbidden_initial_characters = []
-  for (var otherHandCard of $.player.hand) {
-    if (otherHandCard === handCard) continue
+  for (var otherHandCard of target.hand) {
+    if (otherHandCard === target.currentHandCard) continue
     forbidden_initial_characters.push(otherHandCard.orig_text[0])
   }
 
   var newHandCard = mkHandCard({
     forbidden_initial_characters: forbidden_initial_characters,
-    card: Phaser.Math.RND.pick($.player.deck),
+    card: Phaser.Math.RND.pick(target.deck),
     scene: scene
   })
 
-  for (let i = 0; i < $.player.hand.length; i++) {
-    if ($.player.hand[i] === handCard) {
-      $.player.hand[i] = newHandCard
-      newHandCard.root.x = 100
+  for (let i = 0; i < target.hand.length; i++) {
+    if (target.hand[i] === target.currentHandCard) {
+      target.hand[i] = newHandCard
+      newHandCard.root.x = target.handX
       newHandCard.root.y = 100 + i*60
       break
     }
   }
 
-  $.player.current_handCard = undefined
+  target.currentHandCard = undefined
 }
 
 export default scene
