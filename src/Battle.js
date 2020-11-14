@@ -1,4 +1,4 @@
-import mkCard from "./Battle/Card.js"
+import mkBattleRow from "./Battle/BattleRow.js"
 
 var scene = new Phaser.Scene({ key: "Battle" })
 
@@ -7,30 +7,54 @@ var $ = {}
 // Input
 //
 // Player stats (HP, Deck, Gold, Ult meter, Inventory, Which character you are)
-// Enemy stats (HP, Deck, Which character they are)
+// Enemy stats (HP, Deck, characters per second, Which character they are)
+//
+// input player.max_hp
+// input player.hp
+// input.player.deck - an array of Cards
+// input.player.gold TODO
+// input.player.ult TODO
+// input.player.inventory TODO
+// input.enemy.hp
+// input.enemy.deck
+// input.enemy.cps
 
 scene.init = function(input) {
   console.log("Battle", input)
 
   $ = {
-    cards: [],
-    current_card: undefined,
+    player: {
+      max_hp: input.player.hp,
+      hp: input.player.hp,
+      deck: input.player.deck,
+      gold: input.player.gold,
+      ult: input.player.ult,
+      inventory: input.player.inventory
+    },
+    enemy: {
+      max_hp: input.enemy.hp,
+      hp: input.enemy.hp,
+      deck: input.enemy.deck,
+      cps: input.enemy.cps
+    },
+    battleRows: [],
+    current_battleRow: undefined,
     keys: [],
     down_keys: {}
   }
 
-  // init cards
-  // TODO deal with words having the same starting character (prevent)
+  // init battleRows
   var forbidden_initial_characters = []
   for (let i = 0; i < 6; i++) {
-    var card = mkCard({
+    var battleRow = mkBattleRow({
       forbidden_initial_characters: forbidden_initial_characters,
+      card: Phaser.Math.RND.pick($.player.deck),
       scene: scene
     })
-    forbidden_initial_characters.push(card.orig_text[0])
-    card.text_obj.x = 100
-    card.text_obj.y = 100 + i*40
-    $.cards.push(card)
+    forbidden_initial_characters.push(battleRow.orig_text[0])
+    battleRow.root.x = 100
+    battleRow.root.y = 100 + i*40
+    $.battleRows.push(battleRow)
   }
 
   // init key listeners
@@ -39,6 +63,8 @@ scene.init = function(input) {
   }
   $.keys.push(scene.input.keyboard.addKey("SPACE", true))
   $.keys.push(scene.input.keyboard.addKey("ENTER", true))
+
+  console.log($)
 }
 
 scene.update = function() {
@@ -56,57 +82,58 @@ scene.update = function() {
     console.log(String.fromCharCode(keyCode))
     $.down_keys[keyCode] = key
 
-    if ($.current_card) {
-      var nextKeyCode = $.current_card.remaining[0].toUpperCase().charCodeAt(0)
+    if ($.current_battleRow) {
+      var nextKeyCode = $.current_battleRow.remaining[0].toUpperCase().charCodeAt(0)
       if (nextKeyCode === keyCode) {
-        $.current_card.remaining = $.current_card.remaining.substring(1)
-        $.current_card.text_obj.text = $.current_card.remaining
-        if ($.current_card.remaining.length === 0) {
-          redrawCard($.current_card)
+        $.current_battleRow.remaining = $.current_battleRow.remaining.substring(1)
+        $.current_battleRow.text_obj.text = $.current_battleRow.remaining
+        if ($.current_battleRow.remaining.length === 0) {
+          redrawBattleRow($.current_battleRow)
         }
       } else {
-        redrawCard($.current_card)
+        redrawBattleRow($.current_battleRow)
       }
     } else {
-      // no current card, try find one
-      for (var card of $.cards) {
-        if (card.remaining.length === 0) continue
-        var nextKeyCode = card.remaining[0].toUpperCase().charCodeAt(0)
+      // no current battleRow, try find one
+      for (var battleRow of $.battleRows) {
+        if (battleRow.remaining.length === 0) continue
+        var nextKeyCode = battleRow.remaining[0].toUpperCase().charCodeAt(0)
         if (nextKeyCode !== keyCode) continue
-        card.remaining = card.remaining.substring(1)
-        card.text_obj.text = card.remaining
-        $.current_card = card
-        card.text_obj.setColor("#55ff55")
+        battleRow.remaining = battleRow.remaining.substring(1)
+        battleRow.text_obj.text = battleRow.remaining
+        $.current_battleRow = battleRow
+        battleRow.text_obj.setColor("#55ff55")
         break
       }
     }
   }
 }
 
-function redrawCard(card) {
-  card.text_obj.destroy()
+function redrawBattleRow(battleRow) {
+  battleRow.destroy()
 
   var forbidden_initial_characters = []
-  for (var otherCard of $.cards) {
-    if (otherCard === card) continue
-    forbidden_initial_characters.push(otherCard.orig_text[0])
+  for (var otherBattleRow of $.battleRows) {
+    if (otherBattleRow === battleRow) continue
+    forbidden_initial_characters.push(otherBattleRow.orig_text[0])
   }
 
-  var newCard = mkCard({
+  var newBattleRow = mkBattleRow({
     forbidden_initial_characters: forbidden_initial_characters,
+    card: Phaser.Math.RND.pick($.player.deck),
     scene: scene
   })
 
-  for (let i = 0; i < $.cards.length; i++) {
-    if ($.cards[i] === card) {
-      $.cards[i] = newCard
-      newCard.text_obj.x = 100
-      newCard.text_obj.y = 100 + i*40
+  for (let i = 0; i < $.battleRows.length; i++) {
+    if ($.battleRows[i] === battleRow) {
+      $.battleRows[i] = newBattleRow
+      newBattleRow.root.x = 100
+      newBattleRow.root.y = 100 + i*40
       break
     }
   }
 
-  $.current_card = undefined
+  $.current_battleRow = undefined
 }
 
 export default scene
