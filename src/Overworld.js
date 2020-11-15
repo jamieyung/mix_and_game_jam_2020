@@ -1,22 +1,24 @@
 import { cards } from "./Card.js"
 import { enemies } from "./Enemy.js"
-import { NodeContentsType, floors } from "./Floor.js"
+import { NodeContentsType } from "./Floor.js"
 
 const scene = new Phaser.Scene({ key: "Overworld" })
 
 let $ = {}
 
+// input.floor
 scene.create = function(input) {
   console.log("Overworld", input)
+  const floor = JSON.parse(JSON.stringify(input.floor)) // deep copy
   $ = {
-    floor: JSON.parse(JSON.stringify(floors[input.floorId])), // deep copy
+    floor: floor,
     node_objects: {},
     edge_objects: [],
     adj: {}, // adjacency list, initialised below
     nodes_and_edges_layer: scene.add.container(0, 0),
     enemies_layer: scene.add.container(0, 0),
     player: {
-      nodeId: 0, // initialised below
+      nodeId: floor.playerStartNodeId,
       obj: null // initialised below
     },
     enemies: []
@@ -46,7 +48,6 @@ scene.create = function(input) {
     circle.setInteractive()
     circle.on("pointerup", function() {
       const path = bfs(0, i)
-      console.log(path)
       if (path) {
         $.player.nodeId = i
         $.player.obj.x = node.x
@@ -59,13 +60,17 @@ scene.create = function(input) {
               hp: 15,
               deck: [
                 cards.hit,
+                cards.hit,
+                cards.hit,
                 cards.heal
               ],
               gold: 0, // TODO
               ult: {}, // TODO
               inventory: {} // TODO
             },
-            enemy: enemies[node.contents.enemyId]
+            enemy: enemies[node.contents.enemyId],
+            floor: JSON.parse(JSON.stringify($.floor)), // deep copy
+            playerNodeId: $.player.nodeId
           })
         }
       }
@@ -73,10 +78,7 @@ scene.create = function(input) {
     $.nodes_and_edges_layer.add(circle)
     $.node_objects[i] = circle
 
-    if (node.contents.type === NodeContentsType.PLAYER) {
-      $.player.nodeId = i
-      $.player.obj = scene.add.text(node.x, node.y, "P")
-    } else if (node.contents.type === NodeContentsType.ENEMY) {
+    if (node.contents.type === NodeContentsType.ENEMY) {
       const enemy = enemies[node.contents.enemyId]
       const enemy_obj = scene.add.text(node.x, node.y, enemy.name)
       $.enemies_layer.add(enemy_obj)
@@ -86,6 +88,10 @@ scene.create = function(input) {
       })
     }
   }
+
+  // Render player
+  const playerStartNode = floor.nodes[floor.playerStartNodeId]
+  $.player.obj = scene.add.text(playerStartNode.x, playerStartNode.y, "P")
 }
 
 // u and v are node ids.

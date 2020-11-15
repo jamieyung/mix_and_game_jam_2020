@@ -1,4 +1,5 @@
 import { EffectType, TargetType } from "./Card.js"
+import { NodeContentsType } from "./Floor.js"
 
 const scene = new Phaser.Scene({ key: "Battle" })
 
@@ -22,6 +23,8 @@ let $ = {}
 // input.enemy.casting_cooldown_ms
 // input.enemy.n_characters_between_mistakes.avg
 // input.enemy.n_characters_between_mistakes.std
+// input.floor
+// input.playerNodeId
 
 scene.create = function(input) {
   console.log("Battle", input)
@@ -55,7 +58,9 @@ scene.create = function(input) {
       ms_until_next_char: 0
     },
     keys: [],
-    down_keys: {}
+    down_keys: {},
+    floor: input.floor,
+    playerNodeId: input.playerNodeId
   }
 
   initHand($.player, 100)
@@ -213,7 +218,12 @@ scene.update = function(time, dt) {
   if ($.player.hp <= 0) {
     scene.scene.start("Init")
   } else if ($.enemy.hp <= 0) {
-    scene.scene.start("Init")
+    const floor = JSON.parse(JSON.stringify($.floor))
+    floor.nodes[$.playerNodeId].contents = { type: NodeContentsType.NONE }
+    floor.playerStartNodeId = $.playerNodeId
+    scene.scene.start("Overworld", {
+      floor: floor
+    })
   }
 }
 

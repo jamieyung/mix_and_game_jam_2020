@@ -1,3 +1,5 @@
+import { floors } from "./Floor.js"
+
 const scene = new Phaser.Scene({ key: "Init" })
 
 let $ = {}
@@ -14,7 +16,7 @@ scene.create = function(input) {
 scene.update = function() {
   if ($.enter.isDown) {
     scene.scene.start("Overworld", {
-      floorId: 0
+      floor: floors[0]
     })
   }
 }
