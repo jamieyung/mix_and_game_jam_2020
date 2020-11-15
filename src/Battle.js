@@ -40,6 +40,8 @@ scene.create = function(input) {
       hand: [], // initialised below
       handX: 100,
       currentHandCard: undefined,
+      health_bar_bg: undefined, // initialised below
+      health_bar_fg: undefined, // initialised below
       health_text_obj: undefined, // initialised below
     },
     enemy: {
@@ -54,8 +56,10 @@ scene.create = function(input) {
       hand: [], // initialised below
       handX: 500,
       currentHandCard: undefined,
+      health_bar_bg: undefined, // initialised below
+      health_bar_fg: undefined, // initialised below
       health_text_obj: undefined, // initialised below
-      ms_until_next_char: 0
+      ms_until_next_char: 0,
     },
     keys: [],
     down_keys: {},
@@ -64,12 +68,17 @@ scene.create = function(input) {
   }
 
   initHand($.player, 100)
-  $.player.health_text_obj = scene.add.text(100, 40, $.player.hp + "/" + $.player.max_hp)
+  $.player.health_bar_bg = scene.add.rectangle(100, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
+  $.player.health_bar_fg = scene.add.rectangle(100, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
+  $.player.health_bar_fg.setScale($.player.hp/$.player.max_hp, 1)
+  $.player.health_text_obj = scene.add.text(200, 40, $.player.hp + "/" + $.player.max_hp).setOrigin(0.5, 0.5)
   $.player.health_text_obj.setFontSize(20)
 
   recalcEnemyCharactersUntilNextMistake()
   initHand($.enemy, 100)
-  $.enemy.health_text_obj = scene.add.text(500, 40, $.enemy.hp + "/" + $.enemy.hp)
+  $.enemy.health_bar_bg = scene.add.rectangle(500, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
+  $.enemy.health_bar_fg = scene.add.rectangle(500, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
+  $.enemy.health_text_obj = scene.add.text(600, 40, $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
   $.enemy.health_text_obj.setFontSize(20)
 
   // init key listeners
@@ -247,9 +256,11 @@ function executeCardEffect(asPlayer, card) {
 
   if (card.effect.type === EffectType.DAMAGE) {
     target.hp = Math.max(0, target.hp - card.effect.amount)
+    target.health_bar_fg.setScale(target.hp/target.max_hp, 1)
     target.health_text_obj.text = target.hp + "/" + target.max_hp
   } else if (card.effect.type === EffectType.HEAL) {
     target.hp = Math.min(target.max_hp, target.hp + card.effect.amount)
+    target.health_bar_fg.setScale(target.hp/target.max_hp, 1)
     target.health_text_obj.text = target.hp + "/" + target.max_hp
   }
 }
