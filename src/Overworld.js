@@ -1,6 +1,6 @@
 import { cards } from "./Card.js"
 import { enemies } from "./Enemy.js"
-import { NodeContentsType } from "./Floor.js"
+import { NodeContentsType, floors } from "./Floor.js"
 
 const scene = new Phaser.Scene({ key: "Overworld" })
 
@@ -16,7 +16,7 @@ scene.create = function(input) {
     edge_objects: [],
     adj: {}, // adjacency list, initialised below
     nodes_and_edges_layer: scene.add.container(0, 0),
-    enemies_layer: scene.add.container(0, 0),
+    node_contents_layer: scene.add.container(0, 0),
     player: {
       nodeId: floor.playerStartNodeId,
       obj: null // initialised below
@@ -52,46 +52,65 @@ scene.create = function(input) {
         $.player.nodeId = i
         $.player.obj.x = node.x
         $.player.obj.y = node.y
-
-        if (node.contents.type === NodeContentsType.ENEMY) {
-          scene.scene.start("Battle", {
-            player: {
-              max_hp: 20,
-              hp: 15,
-              deck: [
-                cards.hit,
-                cards.hit,
-                cards.hit,
-                cards.heal
-              ],
-              gold: 0, // TODO
-              ult: {}, // TODO
-              inventory: {} // TODO
-            },
-            enemy: enemies[node.contents.enemyId],
-            floor: JSON.parse(JSON.stringify($.floor)), // deep copy
-            playerNodeId: $.player.nodeId
-          })
-        }
+        handlePlayerArrivedAtNode(node)
       }
     })
     $.nodes_and_edges_layer.add(circle)
     $.node_objects[i] = circle
 
-    if (node.contents.type === NodeContentsType.ENEMY) {
+    if (node.contents.type === NodeContentsType.NONE) {
+      // do nothing
+    } else if (node.contents.type === NodeContentsType.ENEMY) {
       const enemy = enemies[node.contents.enemyId]
       const enemy_obj = scene.add.text(node.x, node.y, enemy.name)
-      $.enemies_layer.add(enemy_obj)
+      $.node_contents_layer.add(enemy_obj)
       $.enemies.push({
         enemy: enemy,
         obj: enemy_obj
       })
+    } else if (node.contents.type === NodeContentsType.EXIT) {
+      const exit_obj = scene.add.text(node.x, node.y, "E")
+      $.node_contents_layer.add(exit_obj)
+    } else {
+      console.log("Overworld create function: Unhandled NodeContentsType case:", node.contents.type)
     }
   }
 
   // Render player
   const playerStartNode = floor.nodes[floor.playerStartNodeId]
   $.player.obj = scene.add.text(playerStartNode.x, playerStartNode.y, "P")
+}
+
+function handlePlayerArrivedAtNode(node) {
+  if (node.contents.type === NodeContentsType.NONE) {
+    // do nothing
+  } else if (node.contents.type === NodeContentsType.ENEMY) {
+    scene.scene.start("Battle", {
+      player: {
+        max_hp: 20,
+        hp: 15,
+        deck: [
+          cards.hit,
+          cards.hit,
+          cards.hit,
+          cards.heal
+        ],
+        gold: 0, // TODO
+        ult: {}, // TODO
+        inventory: {} // TODO
+      },
+      enemy: enemies[node.contents.enemyId],
+      floor: JSON.parse(JSON.stringify($.floor)), // deep copy
+      playerNodeId: $.player.nodeId
+    })
+  } else if (node.contents.type === NodeContentsType.EXIT) {
+    var floor = floors[node.contents.targetFloorIdx]
+    scene.scene.start("Overworld", {
+      floor: JSON.parse(JSON.stringify(floor)), // deep copy
+    })
+  } else {
+    console.log("Overworld handlePlayerArrivedAtNode function: Unhandled NodeContentsType case:", node.contents.type)
+  }
 }
 
 // u and v are node ids.
