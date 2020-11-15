@@ -2,7 +2,8 @@ const EffectType = {
   DAMAGE: 0,
   HEAL: 1,
   LEECH: 2,
-  SHIELD: 3
+  SHIELD: 3,
+  BERSERK: 4
 }
 
 const cards = {
@@ -38,7 +39,14 @@ const cards = {
     name: "Harden",
     cost: 2,
     effects: [
-      { type: EffectType.SHIELD, amount: 1 }
+      { type: EffectType.SHIELD, amount: 5 }
+    ]
+  },
+  berserk: {
+    name: "Berserk",
+    cost: 2,
+    effects: [
+      { type: EffectType.BERSERK, duration_secs: 10 }
     ]
   },
 }

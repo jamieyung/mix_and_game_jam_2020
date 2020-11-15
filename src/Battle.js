@@ -100,7 +100,7 @@ scene.create = function(input) {
   $.enemy.health_text_obj = scene.add.text(600, 40, $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
   $.enemy.health_text_obj.setFontSize(20)
 
-  recalcStatusEffects()
+  recalcStatusEffects(0)
 
   // init key listeners
   for (let i = 65; i <= 90; i++) {
@@ -172,7 +172,7 @@ function mkHandCard(args) {
   }
 }
 
-scene.update = function(time, dt) {
+scene.update = function(_, dt) {
   // Handle keyup events
   for (const [keyCode, key] of Object.entries($.down_keys)) {
     if (key.isDown) continue
@@ -249,6 +249,8 @@ scene.update = function(time, dt) {
     }
   }
 
+  recalcStatusEffects(dt)
+
   // Check for end of battle
   if ($.player.hp <= 0) {
     $.music.intro.stop()
@@ -274,7 +276,7 @@ scene.update = function(time, dt) {
   }
 }
 
-function recalcStatusEffects() {
+function recalcStatusEffects(dt) {
   const xs = [$.player, $.enemy]
   for (const target of xs) {
     // recalc/prune effects
@@ -282,6 +284,11 @@ function recalcStatusEffects() {
       const t = Number(type)
       if (t === StatusEffectType.SHIELD) {
         if (status_effect.amount <= 0) delete target.status_effects[type]
+      }
+
+      else if (t === StatusEffectType.BERSERK) {
+        status_effect.remaining_secs -= dt/1000
+        if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
       }
     }
 
@@ -291,9 +298,8 @@ function recalcStatusEffects() {
       const t = Number(type)
       if (str !== "") str += ", "
       const name = SEnameFromType(type)
-      if (t === StatusEffectType.SHIELD) {
-        str += name + " " + status_effect.amount
-      }
+      if (t === StatusEffectType.SHIELD) str += name + " " + status_effect.amount
+      else if (t === StatusEffectType.BERSERK) str += name + " " + status_effect.remaining_secs.toFixed(0)
     }
 
     target.status_effects_text_obj.text = str
@@ -309,9 +315,17 @@ function executeCardEffect(asPlayer, card) {
   const self = asPlayer ? $.player : $.enemy
   const opponent = asPlayer ? $.enemy : $.player
 
+  let damageAmount = 0
+  let berserkDamageWasDone = false
+
   for (let effect of card.effects) {
     if (effect.type === EffectType.DAMAGE) {
       let amount = effect.amount
+
+      if (self.status_effects[StatusEffectType.BERSERK]) {
+        amount *= 2
+        berserkDamageWasDone = true
+      }
 
       if (opponent.status_effects[StatusEffectType.SHIELD]) {
         const shield_info = opponent.status_effects[StatusEffectType.SHIELD]
@@ -324,13 +338,22 @@ function executeCardEffect(asPlayer, card) {
       opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
       opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
 
-    } else if (effect.type === EffectType.HEAL) {
+      damageAmount += amount
+    }
+
+    else if (effect.type === EffectType.HEAL) {
       self.hp = Math.min(self.max_hp, self.hp + effect.amount)
       self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
       self.health_text_obj.text = self.hp + "/" + self.max_hp
+    }
 
-    } else if (effect.type === EffectType.LEECH) {
+    else if (effect.type === EffectType.LEECH) {
       let amount = effect.amount
+
+      if (self.status_effects[StatusEffectType.BERSERK]) {
+        amount *= 2
+        berserkDamageWasDone = true
+      }
 
       if (opponent.status_effects[StatusEffectType.SHIELD]) {
         const shield_info = opponent.status_effects[StatusEffectType.SHIELD]
@@ -346,12 +369,27 @@ function executeCardEffect(asPlayer, card) {
       self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
       self.health_text_obj.text = self.hp + "/" + self.max_hp
 
-    } else if (effect.type === EffectType.SHIELD) {
+      damageAmount += amount
+    }
+
+    else if (effect.type === EffectType.SHIELD) {
       if (!self.status_effects[StatusEffectType.SHIELD]) self.status_effects[StatusEffectType.SHIELD] = { amount: 0 }
       self.status_effects[StatusEffectType.SHIELD].amount += effect.amount
     }
+
+    else if (effect.type === EffectType.BERSERK) {
+      if (!self.status_effects[StatusEffectType.BERSERK]) self.status_effects[StatusEffectType.BERSERK] = { remaining_secs: 0 }
+      self.status_effects[StatusEffectType.BERSERK].remaining_secs += effect.duration_secs
+    }
   }
-  recalcStatusEffects()
+
+  if (berserkDamageWasDone) {
+    self.hp = Math.min(self.max_hp, self.hp - damageAmount/2)
+    self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
+    self.health_text_obj.text = self.hp + "/" + self.max_hp
+  }
+
+  recalcStatusEffects(0)
 }
 
 function redrawCurrentHandCard(target) {
