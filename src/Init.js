@@ -6,6 +6,7 @@ const scene = new Phaser.Scene({ key: "Init" })
 let $ = {}
 
 scene.preload = function() {
+  scene.load.audio("overworld_loop", "./audio/Overworld_Theme_Loop.ogg")
   scene.load.audio("battle_intro", "./audio/Battle_Theme_Intro_01.ogg")
   scene.load.audio("battle_loop", "./audio/Battle_Theme_Loop_01.ogg")
 
@@ -15,6 +16,11 @@ scene.preload = function() {
   scene.load.audio("heal", "./audio/Heal_SFX.mp3")
   scene.load.audio("mistake", "./audio/Mistake_sfx.mp3")
   scene.load.audio("leech", "./audio/leech_sfx.mp3")
+  scene.load.audio("berserk", "./audio/Berserk_sfx_01.mp3")
+  scene.load.audio("word_length_down", "./audio/Word_Length_Down.mp3")
+  scene.load.audio("word_length_up", "./audio/Word_Length_Up.mp3")
+  scene.load.audio("slow", "./audio/Slow_Down.mp3")
+  scene.load.audio("poison", "./audio/Poison_sfx_02.mp3")
 
   scene.load.bitmapFont("monoid", "./font/monoid_0.png", "./font/monoid.fnt")
 
@@ -59,16 +65,16 @@ scene.update = function() {
         hp: 15,
         deck: [
           // cards.poke,
-          cards.hit,
+          // cards.hit,
           // cards.heal,
-          cards.leech,
+          // cards.leech,
           // cards.harden,
           // cards.berserk,
-          // cards.poison,
-          cards.mud,
+          cards.poison,
+          // cards.mud,
           // cards.glass_cannon
-          // cards.verbosify,
-          // cards.succinct,
+          cards.verbosify,
+          cards.succinct,
         ],
         gold: 0, // TODO
         ult: {}, // TODO

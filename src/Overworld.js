@@ -16,6 +16,9 @@ let $ = {}
 // input.difficulty.word_length.std
 scene.create = function(input) {
   console.log("Overworld", input)
+
+  scene.sound.pauseOnBlur = false
+
   const floor = JSON.parse(JSON.stringify(input.floor)) // deep copy
   $ = {
     floor: floor,
@@ -33,6 +36,7 @@ scene.create = function(input) {
       nodeId: floor.playerStartNodeId,
       obj: null // initialised below
     },
+    music: scene.sound.add("overworld_loop", { volume: 0.4, loop: true }),
     enemies: [],
   }
 
@@ -96,6 +100,8 @@ scene.create = function(input) {
   $.player_overworld_info.obj.setScale(0.09)
 
   refreshTargetNodeKeys()
+
+  $.music.play({ volume: 0.4, loop: true })
 }
 
 function tryTravelToNode(nodeId) {
@@ -239,6 +245,7 @@ function cleanup() {
   $.target_node_keys_layer.removeAll(true) // destroy all children
   $.target_node_keys_layer.destroy()
   $.player_overworld_info.obj.destroy()
+  $.music.destroy()
   for (let x of $.target_node_keys) {
     x.key_listener.destroy()
   }

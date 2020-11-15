@@ -5,6 +5,9 @@ import { getRandomWord } from "./Words.js"
 
 const scene = new Phaser.Scene({ key: "Battle" })
 
+const cardSpacing = 75
+const letterSpacing = 15
+
 let $ = {}
 
 // Input
@@ -46,7 +49,7 @@ scene.create = function(input) {
       inventory: input.player.inventory,
       hand: [], // initialised below
       handX: 50,
-      handY: 50,
+      handY: 30,
       currentHandCard: undefined,
       name_text_obj: undefined, // initialised below
       health_bar_bg: undefined, // initialised below
@@ -68,8 +71,8 @@ scene.create = function(input) {
       n_characters_between_mistakes: input.enemy.n_characters_between_mistakes,
       characters_until_next_mistake: 0, // initialised below
       hand: [], // initialised below
-      handX: 450,
-      handY: 170,
+      handX: 430,
+      handY: 140,
       currentHandCard: undefined,
       name_text_obj: undefined, // initialised below
       health_bar_bg: undefined, // initialised below
@@ -83,6 +86,8 @@ scene.create = function(input) {
       intro: scene.sound.add("battle_intro", { volume: 0.4 }),
       loop: scene.sound.add("battle_loop", { volume: 0.4, loop: true }),
     },
+    hands_layer: undefined, // initialised below
+    icons_layer: undefined, // initialised below
     keys: [],
     down_keys: {},
     floor: input.floor,
@@ -90,7 +95,6 @@ scene.create = function(input) {
     difficulty: input.difficulty
   }
 
-  initHand($.player)
   $.player.name_text_obj = scene.add.bitmapText(150, 520, "monoid", "You").setOrigin(0, 0.5)
   $.player.name_text_obj.setFontSize(20)
   $.player.health_bar_bg = scene.add.rectangle(150, 540, 200, 20, 0xe82727).setOrigin(0, 0.5)
@@ -100,21 +104,25 @@ scene.create = function(input) {
   $.player.health_text_obj.setFontSize(20)
   $.player.status_effects_text_obj = scene.add.bitmapText(150, 560, "monoid", "").setOrigin(0, 0.5)
   $.player.status_effects_text_obj.setFontSize(20)
-  $.player.character_sprite = scene.add.image(80, 550, "hero_back")
+  $.player.character_sprite = scene.add.image(100, 550, "hero_back")
   $.player.character_sprite.setScale(0.1)
 
   recalcEnemyCharactersUntilNextMistake()
-  initHand($.enemy)
-  $.enemy.name_text_obj = scene.add.bitmapText(450, 60, "monoid", $.enemy.name).setOrigin(0, 0.5)
+  $.enemy.name_text_obj = scene.add.bitmapText(430, 60, "monoid", $.enemy.name).setOrigin(0, 0.5)
   $.enemy.name_text_obj.setFontSize(20)
-  $.enemy.health_bar_bg = scene.add.rectangle(450, 80, 200, 20, 0xe82727).setOrigin(0, 0.5)
-  $.enemy.health_bar_fg = scene.add.rectangle(450, 80, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
-  $.enemy.health_text_obj = scene.add.bitmapText(550, 80, "monoid", $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
+  $.enemy.health_bar_bg = scene.add.rectangle(430, 80, 200, 20, 0xe82727).setOrigin(0, 0.5)
+  $.enemy.health_bar_fg = scene.add.rectangle(430, 80, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
+  $.enemy.health_text_obj = scene.add.bitmapText(530, 80, "monoid", $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
   $.enemy.health_text_obj.setFontSize(20)
-  $.enemy.status_effects_text_obj = scene.add.bitmapText(450, 100, "monoid", "").setOrigin(0, 0.5)
+  $.enemy.status_effects_text_obj = scene.add.bitmapText(430, 100, "monoid", "").setOrigin(0, 0.5)
   $.enemy.status_effects_text_obj.setFontSize(20)
-  $.enemy.character_sprite = scene.add.image(730, 90, $.enemy.id)
+  $.enemy.character_sprite = scene.add.image(710, 90, $.enemy.id)
   $.enemy.character_sprite.setScale(0.08)
+
+  $.hands_layer = scene.add.container(0, 0)
+  $.icons_layer = scene.add.container(0, 0)
+  initHand($.player)
+  initHand($.enemy)
 
   tickStatusEffects(0)
 
@@ -126,7 +134,7 @@ scene.create = function(input) {
   $.keys.push(scene.input.keyboard.addKey("ENTER", true))
 
   $.music.intro.once("complete", function() {
-    $.music.loop.play()
+    $.music.loop.play({ volume: 0.4, loop: true })
   })
   $.music.intro.play()
 }
@@ -142,7 +150,8 @@ function initHand(target) {
     })
     forbidden_initial_characters.push(handCard.orig_text[0])
     handCard.root.x = target.handX
-    handCard.root.y = target.handY + i*60
+    handCard.root.y = target.handY + i*cardSpacing
+    $.hands_layer.add(handCard.root)
     target.hand.push(handCard)
   }
 }
@@ -153,6 +162,8 @@ const CardState = {
   DONE_DELETING_CHAR: 2,
   DOING_MISTAKE_ANIM: 3,
   DONE_MISTAKE_ANIM: 4,
+  DOING_EXECUTE_ANIM: 5,
+  DONE_EXECUTE_ANIM: 6,
 }
 
 // args.forbidden_initial_characters - array of characters (case-insensitive)
@@ -167,17 +178,47 @@ function mkHandCard(args) {
   const anim_container = scene.add.container(0, 0)
   root.add(anim_container)
 
-  const card_name_text_obj = scene.add.bitmapText(0, 0, "monoid", args.card.name)
+  const card_bg = scene.add.rectangle(0, 0, 330, 50, 0x839e3e).setOrigin(0, 0)
+  anim_container.add(card_bg)
+
+  const card_name_text_obj = scene.add.bitmapText(5, 5, "monoid", args.card.name)
   card_name_text_obj.setTint(0x3a7ea1)
   card_name_text_obj.setScale(0.2)
   anim_container.add(card_name_text_obj)
 
   const char_objs = []
   for (let i = 0; i < orig_text.length; i++) {
-    const char_obj = scene.add.bitmapText(i*24, 15, "monoid", orig_text[i])
-    char_obj.setScale(0.5)
+    const char_obj = scene.add.bitmapText(5 + i*letterSpacing, 20, "monoid", orig_text[i])
+    char_obj.setScale(0.3)
     anim_container.add(char_obj)
     char_objs.push(char_obj)
+  }
+
+  const icons = []
+  for (let i = 0; i < args.card.effects.length; i++) {
+    const effect = args.card.effects[i]
+    let str = ""
+    if (effect.type === EffectType.DAMAGE) str = "damage"
+    else if (effect.type === EffectType.HEAL) str = "heal"
+    else if (effect.type === EffectType.LEECH) str = "leech"
+    else if (effect.type === EffectType.APPLY_STATUS_EFFECT) {
+      const t = Number(effect.status_effect_type)
+      if (t === StatusEffectType.SHIELD) str = "shield"
+      else if (t === StatusEffectType.BERSERK) str = "berserk"
+      else if (t === StatusEffectType.POISON) str = "poison"
+      else if (t === StatusEffectType.SLOW) str = "slow"
+      else if (t === StatusEffectType.GLASS_CANNON) str = "glass_cannon"
+      else if (t === StatusEffectType.LENGTH) {
+        str = (effect.delta_length > 0) ? "length_up" : "length_down"
+      }
+    }
+    const effect_icon_img = scene.add.image(315 - i * 30, 0, str)
+    effect_icon_img.setScale(0.3)
+    anim_container.add(effect_icon_img)
+    icons.push({
+      effect: effect,
+      img: effect_icon_img,
+    })
   }
 
   return {
@@ -187,10 +228,14 @@ function mkHandCard(args) {
     root: root,
     anim_container: anim_container,
     char_objs: char_objs,
+    icons: icons,
     state: CardState.READY,
     destroy: function () {
       root.removeAll(true)
       root.destroy()
+      for (let icon of icons) {
+        icon.img.destroy()
+      }
     }
   }
 }
@@ -199,8 +244,8 @@ function remakeCardCharObjsBasedOnRemaining(card) {
   for (let x of card.char_objs) x.destroy()
   card.char_objs = []
   for (let i = 0; i < card.remaining.length; i++) {
-    const char_obj = scene.add.bitmapText(i*24, 15, "monoid", card.remaining[i])
-    char_obj.setScale(0.5)
+    const char_obj = scene.add.bitmapText(5 + i*letterSpacing, 20, "monoid", card.remaining[i])
+    char_obj.setScale(0.3)
     card.anim_container.add(char_obj)
     card.char_objs.push(char_obj)
   }
@@ -221,11 +266,10 @@ scene.update = function(_, dt) {
       target.currentHandCard.state = CardState.READY
       let head_char_obj = target.currentHandCard.char_objs.shift()
       head_char_obj.destroy()
-      for (let x of target.currentHandCard.char_objs) x.x -= 24
+      for (let x of target.currentHandCard.char_objs) x.x -= letterSpacing
       if (target.currentHandCard.remaining.length === 0) {
         const asPlayer = target === $.player
-        executeCardEffect(asPlayer, target.currentHandCard.card)
-        redrawCurrentHandCard(target)
+        executeCardEffect(asPlayer, target.currentHandCard)
         if (target === $.enemy) {
           $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
         }
@@ -239,6 +283,10 @@ scene.update = function(_, dt) {
       target.currentHandCard.remaining = target.currentHandCard.orig_text
       remakeCardCharObjsBasedOnRemaining(target.currentHandCard)
       target.currentHandCard = undefined
+    }
+
+    else if (target.currentHandCard.state === CardState.DONE_EXECUTE_ANIM) {
+      redrawCurrentHandCard(target)
     }
   }
 
@@ -271,13 +319,12 @@ scene.update = function(_, dt) {
         if (handCard.remaining.length === 0) continue
         const nextKeyCode = handCard.remaining[0].toUpperCase().charCodeAt(0)
         if (nextKeyCode !== keyCode) continue
+        $.player.currentHandCard = handCard
         if (handCard.remaining.length === 1) {
-          executeCardEffect(true, handCard.card)
-          redrawCard($.player, handCard)
+          executeCardEffect(true, handCard)
         } else {
           handCard.remaining = handCard.remaining.substring(1)
           remakeCardCharObjsBasedOnRemaining(handCard)
-          $.player.currentHandCard = handCard
           for (let x of handCard.char_objs) x.setTint(0x55ff55)
         }
         break
@@ -459,6 +506,8 @@ function recalcEnemyCharactersUntilNextMistake() {
 }
 
 function executeCardEffect(asPlayer, card) {
+  card.state = CardState.DOING_EXECUTE_ANIM
+
   const self = asPlayer ? $.player : $.enemy
   const opponent = asPlayer ? $.enemy : $.player
 
@@ -474,7 +523,7 @@ function executeCardEffect(asPlayer, card) {
   if (wasBerserk) damageMultiplier *= 2
   if (wasGlassCannon) damageMultiplier *= 2
 
-  for (let effect of card.effects) {
+  for (let effect of card.card.effects) {
     const target = effect.target_self ? self : opponent
     const target_opp = effect.target_self ? opponent : self
 
@@ -532,6 +581,7 @@ function executeCardEffect(asPlayer, card) {
       else if (effect.status_effect_type === StatusEffectType.BERSERK) {
         if (!target.status_effects[StatusEffectType.BERSERK]) target.status_effects[StatusEffectType.BERSERK] = { remaining_secs: 0 }
         target.status_effects[StatusEffectType.BERSERK].remaining_secs += effect.duration_secs
+        scene.sound.play("berserk")
       }
 
       else if (effect.status_effect_type === StatusEffectType.POISON) {
@@ -541,11 +591,13 @@ function executeCardEffect(asPlayer, card) {
           ms_until_next_hit: 1000,
         }
         target.status_effects[StatusEffectType.POISON].remaining_secs += effect.duration_secs
+        scene.sound.play("poison")
       }
 
       else if (effect.status_effect_type === StatusEffectType.SLOW) {
         if (!target.status_effects[StatusEffectType.SLOW]) target.status_effects[StatusEffectType.SLOW] = { remaining_secs: 0 }
         target.status_effects[StatusEffectType.SLOW].remaining_secs += effect.duration_secs
+        scene.sound.play("slow")
       }
 
       else if (effect.status_effect_type === StatusEffectType.GLASS_CANNON) {
@@ -564,7 +616,37 @@ function executeCardEffect(asPlayer, card) {
           if (card === target.currentHandCard) continue
           rerollCardWords(target, card)
         }
+        scene.sound.play("word_length_" + (effect.delta_length > 0 ? "up" : "down"))
       }
+    }
+  }
+
+  let isFirstTween = true
+  for (let icon of card.icons) {
+    $.icons_layer.add(icon.img)
+    icon.img.x += card.root.x
+    icon.img.y += card.root.y
+    const target = icon.effect.target_self ? self : opponent
+    let tween = scene.tweens.add({
+      targets: icon.img,
+      props: {
+        x: {
+          from: icon.img.x,
+          to: target.character_sprite.x,
+        },
+        y: {
+          from: icon.img.y,
+          to: target.character_sprite.y,
+        },
+      },
+      duration: 200,
+    })
+    if (isFirstTween) {
+      tween.on("complete", function() {
+        console.log("Asdf")
+        card.state = CardState.DONE_EXECUTE_ANIM
+      })
+      isFirstTween = false
     }
   }
 
@@ -631,7 +713,7 @@ function redrawCard(target, card) {
     if (target.hand[i] === card) {
       target.hand[i] = newHandCard
       newHandCard.root.x = target.handX
-      newHandCard.root.y = target.handY + i*60
+      newHandCard.root.y = target.handY + i*cardSpacing
       break
     }
   }
@@ -648,7 +730,7 @@ function calcForbiddenInitialCharacters(target) {
 
 function rerollCardWords(target, card) {
   const forbidden_initial_characters = calcForbiddenInitialCharacters(target)
-  const orig_text = generateWords(forbidden_initial_characters, card.cost, calcAvgWordLength(target), $.difficulty.word_length.std)
+  const orig_text = generateWords(forbidden_initial_characters, card.card.cost, calcAvgWordLength(target), $.difficulty.word_length.std)
   card.orig_text = orig_text
   card.remaining = orig_text
   remakeCardCharObjsBasedOnRemaining(card)
