@@ -23,11 +23,13 @@ scene.create = function(input) {
     adj: {}, // adjacency list, initialised below
     nodes_and_edges_layer: scene.add.container(0, 0),
     node_contents_layer: scene.add.container(0, 0),
+    target_node_keys_layer: scene.add.container(0, 0),
+    target_node_keys: [],
     player_overworld_info: {
       nodeId: floor.playerStartNodeId,
       obj: null // initialised below
     },
-    enemies: []
+    enemies: [],
   }
 
   // Render edges
@@ -53,13 +55,7 @@ scene.create = function(input) {
     const circle = scene.add.circle(node.x, node.y, 30, 0x805920)
     circle.setInteractive()
     circle.on("pointerup", function() {
-      const path = bfs(0, i)
-      if (path) {
-        $.player_overworld_info.nodeId = i
-        $.player_overworld_info.obj.x = node.x
-        $.player_overworld_info.obj.y = node.y
-        handlePlayerArrivedAtNode(node)
-      }
+      tryTravelToNode(i)
     })
     $.nodes_and_edges_layer.add(circle)
     $.node_objects[i] = circle
@@ -85,9 +81,24 @@ scene.create = function(input) {
   // Render player
   const playerStartNode = floor.nodes[floor.playerStartNodeId]
   $.player_overworld_info.obj = scene.add.text(playerStartNode.x, playerStartNode.y, "P")
+
+  refreshTargetNodeKeys()
+}
+
+function tryTravelToNode(nodeId) {
+  const path = bfs($.player_overworld_info.nodeId, nodeId)
+  if (path) {
+    const node = $.floor.nodes[nodeId]
+    $.player_overworld_info.nodeId = nodeId
+    $.player_overworld_info.obj.x = node.x
+    $.player_overworld_info.obj.y = node.y
+    handlePlayerArrivedAtNode(node)
+  }
 }
 
 function handlePlayerArrivedAtNode(node) {
+  refreshTargetNodeKeys()
+
   if (node.contents.type === NodeContentsType.NONE) {
     // do nothing
   } else if (node.contents.type === NodeContentsType.ENEMY) {
@@ -98,7 +109,7 @@ function handlePlayerArrivedAtNode(node) {
       playerNodeId: $.player_overworld_info.nodeId
     })
   } else if (node.contents.type === NodeContentsType.EXIT) {
-    var floor = floors[node.contents.targetFloorIdx]
+    const floor = floors[node.contents.targetFloorIdx]
     scene.scene.start("Overworld", {
       floor: JSON.parse(JSON.stringify(floor)), // deep copy
       player: $.player
@@ -108,13 +119,39 @@ function handlePlayerArrivedAtNode(node) {
   }
 }
 
+function refreshTargetNodeKeys() {
+  $.target_node_keys_layer.removeAll(true) // destroy all children
+  for (let x of $.target_node_keys) {
+    x.key_listener.destroy()
+  }
+  $.target_node_keys = []
+
+  const curNodeId = $.player_overworld_info.nodeId
+  const reachableNodes = calcReachableNodes(curNodeId)
+  const availableKeys = ["A", "S", "D", "F", "G", "H", "J", "K", "L"]
+  for (let nodeId of reachableNodes) {
+    const node = $.floor.nodes[nodeId]
+    const c = availableKeys.shift()
+    const key_listener = scene.input.keyboard.addKey(c, true)
+    key_listener.on("down", function() {
+      tryTravelToNode(nodeId)
+    })
+    const text_obj = scene.add.text(node.x, node.y + 30, c) // TODO hardcoded
+    $.target_node_keys_layer.add(text_obj)
+    $.target_node_keys.push({
+      key_listener: key_listener,
+      text_obj: text_obj,
+      node: node
+    })
+  }
+}
+
 // u and v are node ids.
 // null as a return value means no valid path was found.
 function bfs(u, v) {
   const prev = {}
   const visited = {}
-  const queue = []
-  queue.push(u)
+  const queue = [u]
 
   while (queue.length > 0) {
     const cur = queue.shift()
@@ -130,8 +167,7 @@ function bfs(u, v) {
       return path
     }
 
-    // disallow progressing past nodes with enemies on them (must defeat the enemy first)
-    if ($.floor.nodes[cur].contents.type === NodeContentsType.ENEMY) continue
+    if (!canProgressPastNode(cur)) continue
 
     for (let child of $.adj[cur]) {
       if (visited[child]) continue
@@ -141,6 +177,37 @@ function bfs(u, v) {
   }
 
   return null
+}
+
+// returned node ids don't include src node
+function calcReachableNodes(src) {
+  const ret = []
+  const visited = {}
+  const queue = [src]
+
+  while (queue.length > 0) {
+    const cur = queue.shift()
+    visited[cur] = true
+    if (cur !== src) ret.push(cur)
+
+    if (!canProgressPastNode(cur)) continue
+
+    for (let child of $.adj[cur]) {
+      if (visited[child]) continue
+      queue.push(child)
+    }
+  }
+
+  return ret
+}
+
+function canProgressPastNode(nodeId) {
+  const node = $.floor.nodes[nodeId]
+
+  // disallow progressing past nodes with enemies on them (must defeat the enemy first)
+  if (node.contents.type === NodeContentsType.ENEMY) return false
+
+  return true
 }
 
 scene.update = function() {

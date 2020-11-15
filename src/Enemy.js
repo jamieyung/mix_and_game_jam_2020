@@ -14,7 +14,7 @@ const enemies = {
       avg: 60,
       std: 5
     }
-  }
+  },
 }
 
 export {

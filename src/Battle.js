@@ -65,12 +65,12 @@ scene.create = function(input) {
 
   initHand($.player, 100)
   $.player.health_text_obj = scene.add.text(40, 40, "Player HP: " + input.player.hp + "/" + input.player.max_hp)
-  $.player.health_text_obj.setFontSize(40)
+  $.player.health_text_obj.setFontSize(20)
 
   recalcEnemyCharactersUntilNextMistake()
   initHand($.enemy, 100)
   $.enemy.health_text_obj = scene.add.text(500, 40, "Enemy HP: " + input.enemy.hp + "/" + input.enemy.hp)
-  $.enemy.health_text_obj.setFontSize(40)
+  $.enemy.health_text_obj.setFontSize(20)
 
   // init key listeners
   for (let i = 65; i <= 90; i++) {
