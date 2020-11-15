@@ -52,7 +52,7 @@ scene.create = function(input) {
       n_characters_between_mistakes: input.enemy.n_characters_between_mistakes,
       characters_until_next_mistake: 0, // initialised below
       hand: [], // initialised below
-      handX: 600,
+      handX: 500,
       currentHandCard: undefined,
       health_text_obj: undefined, // initialised below
       ms_until_next_char: 0
@@ -64,12 +64,12 @@ scene.create = function(input) {
   }
 
   initHand($.player, 100)
-  $.player.health_text_obj = scene.add.text(40, 40, "Player HP: " + input.player.hp + "/" + input.player.max_hp)
+  $.player.health_text_obj = scene.add.text(100, 40, $.player.hp + "/" + $.player.max_hp)
   $.player.health_text_obj.setFontSize(20)
 
   recalcEnemyCharactersUntilNextMistake()
   initHand($.enemy, 100)
-  $.enemy.health_text_obj = scene.add.text(500, 40, "Enemy HP: " + input.enemy.hp + "/" + input.enemy.hp)
+  $.enemy.health_text_obj = scene.add.text(500, 40, $.enemy.hp + "/" + $.enemy.hp)
   $.enemy.health_text_obj.setFontSize(20)
 
   // init key listeners
@@ -244,16 +244,13 @@ function executeCardEffect(asPlayer, card) {
   const self = asPlayer ? $.player : $.enemy
   const opponent = asPlayer ? $.enemy : $.player
   const target = card.target === TargetType.SELF ? self : opponent
-  const selfText = asPlayer ? "Player" : "Enemy"
-  const opponentText = asPlayer ? "Enemy" : "Player"
-  const targetText = card.target === TargetType.SELF ? selfText : opponentText
 
   if (card.effect.type === EffectType.DAMAGE) {
     target.hp = Math.max(0, target.hp - card.effect.amount)
-    target.health_text_obj.text = targetText + " HP: " + target.hp + "/" + target.max_hp
+    target.health_text_obj.text = target.hp + "/" + target.max_hp
   } else if (card.effect.type === EffectType.HEAL) {
     target.hp = Math.min(target.max_hp, target.hp + card.effect.amount)
-    target.health_text_obj.text = targetText + " HP: " + target.hp + "/" + target.max_hp
+    target.health_text_obj.text = target.hp + "/" + target.max_hp
   }
 }
 

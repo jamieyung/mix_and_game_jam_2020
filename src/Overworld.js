@@ -24,6 +24,7 @@ scene.create = function(input) {
     nodes_and_edges_layer: scene.add.container(0, 0),
     node_contents_layer: scene.add.container(0, 0),
     target_node_keys_layer: scene.add.container(0, 0),
+    nodeid_to_char: {}, // initialised below
     target_node_keys: [],
     player_overworld_info: {
       nodeId: floor.playerStartNodeId,
@@ -32,7 +33,7 @@ scene.create = function(input) {
     enemies: [],
   }
 
-  // Render edges
+  // Init edges
   for (let edge of $.floor.edges) {
     const uid = edge[0]
     const vid = edge[1]
@@ -49,16 +50,19 @@ scene.create = function(input) {
     if ($.adj[vid].indexOf(uid) === -1) $.adj[vid].push(uid)
   }
 
-  // Render nodes and node contents
-  for (let i = 0; i < $.floor.nodes.length; i++) {
-    const node = $.floor.nodes[i]
+  // Init nodes and node contents
+  let availableKeys = "FJDKSLAHGQWERTYUIOPZXCVBNM"
+  for (let nodeId = 0; nodeId < $.floor.nodes.length; nodeId++) {
+    $.nodeid_to_char[nodeId] = availableKeys[0]
+    availableKeys = availableKeys.substring(1)
+    const node = $.floor.nodes[nodeId]
     const circle = scene.add.circle(node.x, node.y, 30, 0x805920)
     circle.setInteractive()
     circle.on("pointerup", function() {
-      tryTravelToNode(i)
+      tryTravelToNode(nodeId)
     })
     $.nodes_and_edges_layer.add(circle)
-    $.node_objects[i] = circle
+    $.node_objects[nodeId] = circle
 
     if (node.contents.type === NodeContentsType.NONE) {
       // do nothing
@@ -128,14 +132,13 @@ function refreshTargetNodeKeys() {
 
   const curNodeId = $.player_overworld_info.nodeId
   const reachableNodes = calcReachableNodes(curNodeId)
-  const availableKeys = ["A", "S", "D", "F", "G", "H", "J", "K", "L"]
   for (let nodeId of reachableNodes) {
-    const node = $.floor.nodes[nodeId]
-    const c = availableKeys.shift()
+    const c = $.nodeid_to_char[nodeId]
     const key_listener = scene.input.keyboard.addKey(c, true)
     key_listener.on("down", function() {
       tryTravelToNode(nodeId)
     })
+    const node = $.floor.nodes[nodeId]
     const text_obj = scene.add.text(node.x, node.y + 30, c) // TODO hardcoded
     $.target_node_keys_layer.add(text_obj)
     $.target_node_keys.push({
