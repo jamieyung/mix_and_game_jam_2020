@@ -195,7 +195,7 @@ function remakeCardCharObjsBasedOnRemaining(card) {
   for (let i = 0; i < card.remaining.length; i++) {
     const char_obj = scene.add.bitmapText(i*24, 15, "monoid", card.remaining[i])
     char_obj.setScale(0.5)
-    card.root.add(char_obj)
+    card.anim_container.add(char_obj)
     card.char_objs.push(char_obj)
   }
 }
