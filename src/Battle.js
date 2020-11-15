@@ -1,4 +1,4 @@
-import { EffectType, TargetType } from "./Card.js"
+import { EffectType } from "./Card.js"
 import { NodeContentsType } from "./Floor.js"
 
 const scene = new Phaser.Scene({ key: "Battle" })
@@ -16,7 +16,7 @@ let $ = {}
 // input.player.gold TODO
 // input.player.ult TODO
 // input.player.inventory TODO
-// input.enemy.name TODO
+// input.enemy.name
 // input.enemy.hp
 // input.enemy.deck
 // input.enemy.characters_per_second
@@ -45,6 +45,7 @@ scene.create = function(input) {
       health_text_obj: undefined, // initialised below
     },
     enemy: {
+      name: input.enemy.name,
       max_hp: input.enemy.hp,
       hp: input.enemy.hp,
       deck: input.enemy.deck,
@@ -56,10 +57,15 @@ scene.create = function(input) {
       hand: [], // initialised below
       handX: 500,
       currentHandCard: undefined,
+      name_text_obj: undefined, // initialised below
       health_bar_bg: undefined, // initialised below
       health_bar_fg: undefined, // initialised below
       health_text_obj: undefined, // initialised below
       ms_until_next_char: 0,
+    },
+    music: {
+      intro: scene.sound.add("battle_intro"),
+      loop: scene.sound.add("battle_loop", { loop: true }),
     },
     keys: [],
     down_keys: {},
@@ -68,6 +74,8 @@ scene.create = function(input) {
   }
 
   initHand($.player, 100)
+  $.enemy.name_text_obj = scene.add.text(100, 20, "You").setOrigin(0, 0.5)
+  $.enemy.name_text_obj.setFontSize(20)
   $.player.health_bar_bg = scene.add.rectangle(100, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
   $.player.health_bar_fg = scene.add.rectangle(100, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
   $.player.health_bar_fg.setScale($.player.hp/$.player.max_hp, 1)
@@ -76,6 +84,8 @@ scene.create = function(input) {
 
   recalcEnemyCharactersUntilNextMistake()
   initHand($.enemy, 100)
+  $.enemy.name_text_obj = scene.add.text(500, 20, $.enemy.name).setOrigin(0, 0.5)
+  $.enemy.name_text_obj.setFontSize(20)
   $.enemy.health_bar_bg = scene.add.rectangle(500, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
   $.enemy.health_bar_fg = scene.add.rectangle(500, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
   $.enemy.health_text_obj = scene.add.text(600, 40, $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
@@ -87,6 +97,11 @@ scene.create = function(input) {
   }
   $.keys.push(scene.input.keyboard.addKey("SPACE", true))
   $.keys.push(scene.input.keyboard.addKey("ENTER", true))
+
+  $.music.intro.once("complete", function() {
+    $.music.loop.play()
+  })
+  $.music.intro.play()
 }
 
 function initHand(target, y) {
@@ -225,11 +240,15 @@ scene.update = function(time, dt) {
 
   // Check for end of battle
   if ($.player.hp <= 0) {
+    $.music.intro.stop()
+    $.music.loop.stop()
     scene.scene.start("Init")
   } else if ($.enemy.hp <= 0) {
     const floor = JSON.parse(JSON.stringify($.floor))
     floor.nodes[$.playerNodeId].contents = { type: NodeContentsType.NONE }
     floor.playerStartNodeId = $.playerNodeId
+    $.music.intro.stop()
+    $.music.loop.stop()
     scene.scene.start("Overworld", {
       floor: floor,
       player: {
@@ -252,16 +271,22 @@ function recalcEnemyCharactersUntilNextMistake() {
 function executeCardEffect(asPlayer, card) {
   const self = asPlayer ? $.player : $.enemy
   const opponent = asPlayer ? $.enemy : $.player
-  const target = card.target === TargetType.SELF ? self : opponent
 
   if (card.effect.type === EffectType.DAMAGE) {
-    target.hp = Math.max(0, target.hp - card.effect.amount)
-    target.health_bar_fg.setScale(target.hp/target.max_hp, 1)
-    target.health_text_obj.text = target.hp + "/" + target.max_hp
+    opponent.hp = Math.max(0, opponent.hp - card.effect.amount)
+    opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
+    opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
   } else if (card.effect.type === EffectType.HEAL) {
-    target.hp = Math.min(target.max_hp, target.hp + card.effect.amount)
-    target.health_bar_fg.setScale(target.hp/target.max_hp, 1)
-    target.health_text_obj.text = target.hp + "/" + target.max_hp
+    self.hp = Math.min(self.max_hp, self.hp + card.effect.amount)
+    self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
+    self.health_text_obj.text = self.hp + "/" + self.max_hp
+  } else if (card.effect.type === EffectType.LEECH) {
+    opponent.hp = Math.min(opponent.max_hp, opponent.hp - card.effect.amount)
+    opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
+    opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
+    self.hp = Math.min(self.max_hp, self.hp + card.effect.amount)
+    self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
+    self.health_text_obj.text = self.hp + "/" + self.max_hp
   }
 }
 

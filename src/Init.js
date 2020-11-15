@@ -5,6 +5,11 @@ const scene = new Phaser.Scene({ key: "Init" })
 
 let $ = {}
 
+scene.preload = function() {
+  scene.load.audio("battle_intro", "./audio/Battle_Theme_Intro_01.ogg")
+  scene.load.audio("battle_loop", "./audio/Battle_Theme_Loop_01.ogg")
+}
+
 // input.floor
 scene.create = function(input) {
   console.log("Init", input)
@@ -24,8 +29,8 @@ scene.update = function() {
         deck: [
           cards.hit,
           cards.hit,
-          cards.hit,
-          cards.heal
+          cards.heal,
+          cards.leech,
         ],
         gold: 0, // TODO
         ult: {}, // TODO

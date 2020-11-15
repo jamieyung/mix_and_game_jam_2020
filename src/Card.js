@@ -1,18 +1,13 @@
 const EffectType = {
   DAMAGE: 0,
   HEAL: 1,
-}
-
-const TargetType = {
-  SELF: 0,
-  OPPONENT: 1
+  LEECH: 2
 }
 
 const cards = {
   hit: {
     name: "Hit",
     cost: 1,
-    target: TargetType.OPPONENT,
     effect: {
       type: EffectType.DAMAGE,
       amount: 1
@@ -21,16 +16,22 @@ const cards = {
   heal: {
     name: "Heal",
     cost: 1,
-    target: TargetType.SELF,
     effect: {
       type: EffectType.HEAL,
+      amount: 1
+    }
+  },
+  leech: {
+    name: "Leech",
+    cost: 1,
+    effect: {
+      type: EffectType.LEECH,
       amount: 1
     }
   },
   poke: {
     name: "Poke",
     cost: 2,
-    target: TargetType.OPPONENT,
     effect: {
       type: EffectType.DAMAGE,
       amount: 1
@@ -40,6 +41,5 @@ const cards = {
 
 export {
   EffectType,
-  TargetType,
   cards
 }
