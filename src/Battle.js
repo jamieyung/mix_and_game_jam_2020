@@ -69,8 +69,11 @@ scene.create = function(input) {
       ms_until_next_char: 0,
     },
     music: {
-      intro: scene.sound.add("battle_intro"),
-      loop: scene.sound.add("battle_loop", { loop: true }),
+      intro: scene.sound.add("battle_intro", { volume: 0.4 }),
+      loop: scene.sound.add("battle_loop", { volume: 0.4, loop: true }),
+    },
+    audio: {
+      light_attack: scene.sound.add("light_attack_01"),
     },
     keys: [],
     down_keys: {},
@@ -136,7 +139,7 @@ const words = ["Adult","Aeroplane","Air","Airforce","Airport","Album","Alphabet"
 // args.card - the card from the deck
 function mkHandCard(args) {
   let orig_text
-  for (let j = 0; j < 50; j++) {
+  for (let i = 0; i < 50; i++) {
     orig_text = Phaser.Math.RND.pick(words)
     let conflict_found = false
     const initial_character = orig_text[0].toUpperCase()
@@ -148,6 +151,12 @@ function mkHandCard(args) {
     }
     if (!conflict_found) break
   }
+
+  // add the rest of the words
+  for (let i = 0; i < args.card.cost - 1; i++) {
+    orig_text += " " + Phaser.Math.RND.pick(words)
+  }
+
   const root = scene.add.container(0, 0)
 
   const card_name_text_obj = scene.add.text(0, 0, args.card.name)
@@ -402,8 +411,22 @@ function executeCardEffect(asPlayer, card) {
   }
 
   if (berserkDamageWasDone) {
-    self.hp = Math.min(self.max_hp, self.hp - damageAmount/2)
+    let berserkSelfDamageAmount = damageAmount/2
+
+    if (self.status_effects[StatusEffectType.SHIELD]) {
+      const shield_info = self.status_effects[StatusEffectType.SHIELD]
+      const shield_amount = shield_info.amount
+      shield_info.amount = Math.max(0, shield_info.amount - berserkSelfDamageAmount)
+      berserkSelfDamageAmount = Math.max(0, berserkSelfDamageAmount - shield_amount)
+    }
+
+    self.hp = Math.min(self.max_hp, self.hp - berserkSelfDamageAmount)
     redrawHealthBar(self)
+  }
+
+  // sfx
+  if (damageAmount > 0) {
+    $.audio.light_attack.play()
   }
 
   tickStatusEffects(0)

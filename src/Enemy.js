@@ -3,7 +3,7 @@ import { cards } from "./Card.js"
 const enemies = {
   enemy1: {
     name: "Bob",
-    hp: 3,
+    hp: 20,
     deck: [
       cards.poke,
       cards.heal
