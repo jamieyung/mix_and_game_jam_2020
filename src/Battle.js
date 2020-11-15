@@ -1,5 +1,6 @@
 import { EffectType } from "./Card.js"
 import { NodeContentsType } from "./Floor.js"
+import { StatusEffectType, nameFromType as SEnameFromType } from "./StatusEffect.js"
 
 const scene = new Phaser.Scene({ key: "Battle" })
 
@@ -33,6 +34,8 @@ scene.create = function(input) {
     player: {
       max_hp: input.player.max_hp,
       hp: input.player.hp,
+      status_effects: {},
+      status_effects_text_obj: undefined, //initialised below
       deck: input.player.deck,
       gold: input.player.gold,
       ult: input.player.ult,
@@ -48,6 +51,8 @@ scene.create = function(input) {
       name: input.enemy.name,
       max_hp: input.enemy.hp,
       hp: input.enemy.hp,
+      status_effects: {},
+      status_effects_text_obj: undefined, //initialised below
       deck: input.enemy.deck,
       characters_per_second: input.enemy.characters_per_second,
       casting_cooldown_ms: input.enemy.casting_cooldown_ms,
@@ -73,15 +78,19 @@ scene.create = function(input) {
     playerNodeId: input.playerNodeId
   }
 
+  $.player.status_effects_text_obj = scene.add.text(100, 60, "").setOrigin(0, 0.5)
+  $.player.status_effects_text_obj.setFontSize(20)
   initHand($.player, 100)
-  $.enemy.name_text_obj = scene.add.text(100, 20, "You").setOrigin(0, 0.5)
-  $.enemy.name_text_obj.setFontSize(20)
+  $.player.name_text_obj = scene.add.text(100, 20, "You").setOrigin(0, 0.5)
+  $.player.name_text_obj.setFontSize(20)
   $.player.health_bar_bg = scene.add.rectangle(100, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
   $.player.health_bar_fg = scene.add.rectangle(100, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
   $.player.health_bar_fg.setScale($.player.hp/$.player.max_hp, 1)
   $.player.health_text_obj = scene.add.text(200, 40, $.player.hp + "/" + $.player.max_hp).setOrigin(0.5, 0.5)
   $.player.health_text_obj.setFontSize(20)
 
+  $.enemy.status_effects_text_obj = scene.add.text(500, 60, "").setOrigin(0, 0.5)
+  $.enemy.status_effects_text_obj.setFontSize(20)
   recalcEnemyCharactersUntilNextMistake()
   initHand($.enemy, 100)
   $.enemy.name_text_obj = scene.add.text(500, 20, $.enemy.name).setOrigin(0, 0.5)
@@ -90,6 +99,8 @@ scene.create = function(input) {
   $.enemy.health_bar_fg = scene.add.rectangle(500, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
   $.enemy.health_text_obj = scene.add.text(600, 40, $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
   $.enemy.health_text_obj.setFontSize(20)
+
+  recalcStatusEffects()
 
   // init key listeners
   for (let i = 65; i <= 90; i++) {
@@ -263,6 +274,32 @@ scene.update = function(time, dt) {
   }
 }
 
+function recalcStatusEffects() {
+  const xs = [$.player, $.enemy]
+  for (const target of xs) {
+    // recalc/prune effects
+    for (const [type, status_effect] of Object.entries(target.status_effects)) {
+      const t = Number(type)
+      if (t === StatusEffectType.SHIELD) {
+        if (status_effect.amount <= 0) delete target.status_effects[type]
+      }
+    }
+
+    // compile render string
+    let str = ""
+    for (const [type, status_effect] of Object.entries(target.status_effects)) {
+      const t = Number(type)
+      if (str !== "") str += ", "
+      const name = SEnameFromType(type)
+      if (t === StatusEffectType.SHIELD) {
+        str += name + " " + status_effect.amount
+      }
+    }
+
+    target.status_effects_text_obj.text = str
+  }
+}
+
 function recalcEnemyCharactersUntilNextMistake() {
   const n = $.enemy.n_characters_between_mistakes.avg + $.enemy.n_characters_between_mistakes.std * Phaser.Math.RND.normal()
   $.enemy.characters_until_next_mistake = Math.max(Math.round(n), 1)
@@ -274,22 +311,47 @@ function executeCardEffect(asPlayer, card) {
 
   for (let effect of card.effects) {
     if (effect.type === EffectType.DAMAGE) {
-      opponent.hp = Math.max(0, opponent.hp - effect.amount)
+      let amount = effect.amount
+
+      if (opponent.status_effects[StatusEffectType.SHIELD]) {
+        const shield_info = opponent.status_effects[StatusEffectType.SHIELD]
+        const shield_amount = shield_info.amount
+        shield_info.amount = Math.max(0, shield_info.amount - amount)
+        amount = Math.max(0, amount - shield_amount)
+      }
+
+      opponent.hp = Math.max(0, opponent.hp - amount)
       opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
       opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
+
     } else if (effect.type === EffectType.HEAL) {
       self.hp = Math.min(self.max_hp, self.hp + effect.amount)
       self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
       self.health_text_obj.text = self.hp + "/" + self.max_hp
+
     } else if (effect.type === EffectType.LEECH) {
-      opponent.hp = Math.min(opponent.max_hp, opponent.hp - effect.amount)
+      let amount = effect.amount
+
+      if (opponent.status_effects[StatusEffectType.SHIELD]) {
+        const shield_info = opponent.status_effects[StatusEffectType.SHIELD]
+        const shield_amount = shield_info.amount
+        shield_info.amount = Math.max(0, shield_info.amount - amount)
+        amount = Math.max(0, amount - shield_amount)
+      }
+
+      opponent.hp = Math.min(opponent.max_hp, opponent.hp - amount)
       opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
       opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
       self.hp = Math.min(self.max_hp, self.hp + effect.amount)
       self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
       self.health_text_obj.text = self.hp + "/" + self.max_hp
+
+    } else if (effect.type === EffectType.SHIELD) {
+      if (!self.status_effects[StatusEffectType.SHIELD]) self.status_effects[StatusEffectType.SHIELD] = { amount: 0 }
+      self.status_effects[StatusEffectType.SHIELD].amount += effect.amount
     }
   }
+  recalcStatusEffects()
 }
 
 function redrawCurrentHandCard(target) {
