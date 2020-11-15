@@ -130,7 +130,8 @@ function initHand(target, y) {
     const handCard = mkHandCard({
       forbidden_initial_characters: forbidden_initial_characters,
       card: Phaser.Math.RND.pick(target.deck),
-      scene: scene
+      word_length_avg: $.difficulty.word_length.avg,
+      word_length_std: $.difficulty.word_length.std,
     })
     forbidden_initial_characters.push(handCard.orig_text[0])
     handCard.root.x = target.handX
@@ -141,25 +142,10 @@ function initHand(target, y) {
 
 // args.forbidden_initial_characters - array of characters (case-insensitive)
 // args.card - the card from the deck
+// args.word_length_avg
+// args.word_length_std
 function mkHandCard(args) {
-  let orig_text
-  for (let i = 0; i < 50; i++) {
-    orig_text = getRandomWord($.difficulty.word_length.avg, $.difficulty.word_length.std)
-    let conflict_found = false
-    const initial_character = orig_text[0].toUpperCase()
-    for (let c of args.forbidden_initial_characters) {
-      if (c.toUpperCase() === initial_character) {
-        conflict_found = true
-        break
-      }
-    }
-    if (!conflict_found) break
-  }
-
-  // add the rest of the words
-  for (let i = 0; i < args.card.cost - 1; i++) {
-    orig_text += " " + getRandomWord($.difficulty.word_length.avg, $.difficulty.word_length.std)
-  }
+  const orig_text = generateWords(args.forbidden_initial_characters, args.card.cost, args.word_length_avg, args.word_length_std)
 
   const root = scene.add.container(0, 0)
 
@@ -215,7 +201,7 @@ scene.update = function(_, dt) {
           $.player.hp = Math.max(0, $.player.hp - 2)
           $.audio.light_attack.play()
           redrawHealthBar($.player)
-        } else { // reset the word
+        } else { // reset the card
           $.player.currentHandCard.remaining = $.player.currentHandCard.orig_text
           $.player.currentHandCard.text_obj.text = $.player.currentHandCard.remaining
           $.player.currentHandCard.text_obj.setColor("#ffffff")
@@ -228,10 +214,15 @@ scene.update = function(_, dt) {
         if (handCard.remaining.length === 0) continue
         const nextKeyCode = handCard.remaining[0].toUpperCase().charCodeAt(0)
         if (nextKeyCode !== keyCode) continue
-        handCard.remaining = handCard.remaining.substring(1)
-        handCard.text_obj.text = handCard.remaining
-        $.player.currentHandCard = handCard
-        handCard.text_obj.setColor("#55ff55")
+        if (handCard.remaining.length === 1) {
+          executeCardEffect(true, handCard.card)
+          redrawCard($.player, handCard)
+        } else {
+          handCard.remaining = handCard.remaining.substring(1)
+          handCard.text_obj.text = handCard.remaining
+          $.player.currentHandCard = handCard
+          handCard.text_obj.setColor("#55ff55")
+        }
         break
       }
     }
@@ -341,6 +332,11 @@ function tickStatusEffects(dt) {
         status_effect.remaining_secs -= dt/1000
         if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
       }
+
+      else if (t === StatusEffectType.LENGTH) {
+        status_effect.remaining_secs -= dt/1000
+        if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
+      }
     }
 
     // compile render string
@@ -354,6 +350,12 @@ function tickStatusEffects(dt) {
       else if (t === StatusEffectType.POISON) str += name + " " + status_effect.remaining_secs.toFixed(0)
       else if (t === StatusEffectType.SLOW) str += name + " " + status_effect.remaining_secs.toFixed(0)
       else if (t === StatusEffectType.GLASS_CANNON) str += name + " " + status_effect.remaining_secs.toFixed(0)
+      else if (t === StatusEffectType.LENGTH) {
+        str += name
+        str += ((status_effect.delta_length > 0) ? "+" : "")
+        str += status_effect.delta_length
+        str += " " + status_effect.remaining_secs.toFixed(0)
+      }
     }
 
     target.status_effects_text_obj.text = str
@@ -380,25 +382,28 @@ function executeCardEffect(asPlayer, card) {
   if (wasGlassCannon) damageMultiplier *= 2
 
   for (let effect of card.effects) {
+    const target = effect.target_self ? self : opponent
+    const target_opp = effect.target_self ? opponent : self
+
     if (effect.type === EffectType.DAMAGE) {
       let amount = effect.amount * damageMultiplier
 
-      if (opponent.status_effects[StatusEffectType.SHIELD]) {
-        const shield_info = opponent.status_effects[StatusEffectType.SHIELD]
+      if (target.status_effects[StatusEffectType.SHIELD]) {
+        const shield_info = target.status_effects[StatusEffectType.SHIELD]
         const shield_amount = shield_info.amount
         shield_info.amount = Math.max(0, shield_info.amount - amount)
         amount = Math.max(0, amount - shield_amount)
       }
 
-      opponent.hp = Math.max(0, opponent.hp - amount)
-      redrawHealthBar(opponent)
+      target.hp = Math.max(0, target.hp - amount)
+      redrawHealthBar(target)
 
       damageAmount += amount
     }
 
     else if (effect.type === EffectType.HEAL) {
-      self.hp = Math.min(self.max_hp, self.hp + effect.amount)
-      redrawHealthBar(self)
+      target.hp = Math.min(target.max_hp, target.hp + effect.amount)
+      redrawHealthBar(target)
 
       healAmount += effect.amount
     }
@@ -406,17 +411,17 @@ function executeCardEffect(asPlayer, card) {
     else if (effect.type === EffectType.LEECH) {
       let amount = effect.amount * damageMultiplier
 
-      if (opponent.status_effects[StatusEffectType.SHIELD]) {
-        const shield_info = opponent.status_effects[StatusEffectType.SHIELD]
+      if (target.status_effects[StatusEffectType.SHIELD]) {
+        const shield_info = target.status_effects[StatusEffectType.SHIELD]
         const shield_amount = shield_info.amount
         shield_info.amount = Math.max(0, shield_info.amount - amount)
         amount = Math.max(0, amount - shield_amount)
       }
 
-      opponent.hp = Math.min(opponent.max_hp, opponent.hp - amount)
-      redrawHealthBar(opponent)
-      self.hp = Math.min(self.max_hp, self.hp + effect.amount)
-      redrawHealthBar(self)
+      target.hp = Math.min(target.max_hp, target.hp - amount)
+      redrawHealthBar(target)
+      target_opp.hp = Math.min(target_opp.max_hp, target_opp.hp + effect.amount)
+      redrawHealthBar(target_opp)
 
       healAmount += amount
       damageAmount += amount
@@ -424,32 +429,45 @@ function executeCardEffect(asPlayer, card) {
 
     else if (effect.type === EffectType.APPLY_STATUS_EFFECT) {
       if (effect.status_effect_type === StatusEffectType.SHIELD) {
-        if (!self.status_effects[StatusEffectType.SHIELD]) self.status_effects[StatusEffectType.SHIELD] = { amount: 0 }
-        self.status_effects[StatusEffectType.SHIELD].amount += effect.amount
+        if (!target.status_effects[StatusEffectType.SHIELD]) target.status_effects[StatusEffectType.SHIELD] = { amount: 0 }
+        target.status_effects[StatusEffectType.SHIELD].amount += effect.amount
       }
 
       else if (effect.status_effect_type === StatusEffectType.BERSERK) {
-        if (!self.status_effects[StatusEffectType.BERSERK]) self.status_effects[StatusEffectType.BERSERK] = { remaining_secs: 0 }
-        self.status_effects[StatusEffectType.BERSERK].remaining_secs += effect.duration_secs
+        if (!target.status_effects[StatusEffectType.BERSERK]) target.status_effects[StatusEffectType.BERSERK] = { remaining_secs: 0 }
+        target.status_effects[StatusEffectType.BERSERK].remaining_secs += effect.duration_secs
       }
 
       else if (effect.status_effect_type === StatusEffectType.POISON) {
-        if (!opponent.status_effects[StatusEffectType.POISON]) opponent.status_effects[StatusEffectType.POISON] = {
+        if (!target.status_effects[StatusEffectType.POISON]) target.status_effects[StatusEffectType.POISON] = {
           remaining_secs: 0,
           ms_between_hits: 1000,
           ms_until_next_hit: 1000,
         }
-        opponent.status_effects[StatusEffectType.POISON].remaining_secs += effect.duration_secs
+        target.status_effects[StatusEffectType.POISON].remaining_secs += effect.duration_secs
       }
 
       else if (effect.status_effect_type === StatusEffectType.SLOW) {
-        if (!opponent.status_effects[StatusEffectType.SLOW]) opponent.status_effects[StatusEffectType.SLOW] = { remaining_secs: 0 }
-        opponent.status_effects[StatusEffectType.SLOW].remaining_secs += effect.duration_secs
+        if (!target.status_effects[StatusEffectType.SLOW]) target.status_effects[StatusEffectType.SLOW] = { remaining_secs: 0 }
+        target.status_effects[StatusEffectType.SLOW].remaining_secs += effect.duration_secs
       }
 
       else if (effect.status_effect_type === StatusEffectType.GLASS_CANNON) {
-        if (!self.status_effects[StatusEffectType.GLASS_CANNON]) self.status_effects[StatusEffectType.GLASS_CANNON] = { remaining_secs: 0 }
-        self.status_effects[StatusEffectType.GLASS_CANNON].remaining_secs += effect.duration_secs
+        if (!target.status_effects[StatusEffectType.GLASS_CANNON]) target.status_effects[StatusEffectType.GLASS_CANNON] = { remaining_secs: 0 }
+        target.status_effects[StatusEffectType.GLASS_CANNON].remaining_secs += effect.duration_secs
+      }
+
+      else if (effect.status_effect_type === StatusEffectType.LENGTH) {
+        if (!target.status_effects[StatusEffectType.LENGTH]) target.status_effects[StatusEffectType.LENGTH] = {
+          remaining_secs: 0,
+          delta_length: 0,
+        }
+        target.status_effects[StatusEffectType.LENGTH].remaining_secs += effect.duration_secs
+        target.status_effects[StatusEffectType.LENGTH].delta_length += effect.delta_length
+        for (let card of target.hand) {
+          if (card === target.currentHandCard) continue
+          rerollCardWords(target, card)
+        }
       }
     }
   }
@@ -488,30 +506,79 @@ function redrawHealthBar(target) {
 
 function redrawCurrentHandCard(target) {
   if (!target.currentHandCard) return
-  target.currentHandCard.destroy()
+  redrawCard(target, target.currentHandCard)
+  target.currentHandCard = undefined
+}
 
-  const forbidden_initial_characters = []
-  for (let otherHandCard of target.hand) {
-    if (otherHandCard === target.currentHandCard) continue
-    forbidden_initial_characters.push(otherHandCard.orig_text[0])
-  }
+function redrawCard(target, card) {
+  card.destroy()
+
+  const forbidden_initial_characters = calcForbiddenInitialCharacters(target)
+  const word_length_avg = calcAvgWordLength(target)
 
   const newHandCard = mkHandCard({
     forbidden_initial_characters: forbidden_initial_characters,
     card: Phaser.Math.RND.pick(target.deck),
-    scene: scene
+    word_length_avg: word_length_avg,
+    word_length_std: $.difficulty.word_length.std,
   })
 
   for (let i = 0; i < target.hand.length; i++) {
-    if (target.hand[i] === target.currentHandCard) {
+    if (target.hand[i] === card) {
       target.hand[i] = newHandCard
       newHandCard.root.x = target.handX
       newHandCard.root.y = 100 + i*60
       break
     }
   }
+}
 
-  target.currentHandCard = undefined
+function calcForbiddenInitialCharacters(target) {
+  const forbidden_initial_characters = []
+  for (let otherHandCard of target.hand) {
+    if (otherHandCard === target.currentHandCard) continue
+    forbidden_initial_characters.push(otherHandCard.orig_text[0])
+  }
+  return forbidden_initial_characters
+}
+
+function rerollCardWords(target, card) {
+  const forbidden_initial_characters = calcForbiddenInitialCharacters(target)
+  const orig_text = generateWords(forbidden_initial_characters, card.cost, calcAvgWordLength(target), $.difficulty.word_length.std)
+  card.orig_text = orig_text
+  card.remaining = orig_text
+  card.text_obj.text = orig_text
+}
+
+function calcAvgWordLength(target) {
+  let word_length_avg = $.difficulty.word_length.avg
+  if (target.status_effects[StatusEffectType.LENGTH]) {
+    word_length_avg += target.status_effects[StatusEffectType.LENGTH].delta_length
+  }
+  return word_length_avg
+}
+
+function generateWords(forbidden_initial_characters, nwords, word_length_avg, word_length_std) {
+  let text
+  for (let i = 0; i < 50; i++) {
+    text = getRandomWord(word_length_avg, word_length_std)
+    let conflict_found = false
+    const initial_character = text[0].toUpperCase()
+    for (let c of forbidden_initial_characters) {
+      if (c.toUpperCase() === initial_character) {
+        conflict_found = true
+        break
+      }
+    }
+    if (!conflict_found) break
+  }
+
+  // add the rest of the words
+  for (let i = 0; i < nwords - 1; i++) {
+    text += " " + getRandomWord(word_length_avg, word_length_std)
+  }
+
+  return text
 }
 
 // in order of add calls in create function

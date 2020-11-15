@@ -7,7 +7,6 @@ const enemies = {
     deck: [
       cards.poke,
       cards.heal,
-      cards.poison
     ],
     characters_per_second: 4,
     casting_cooldown_ms: 500,

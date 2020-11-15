@@ -4,6 +4,7 @@ const StatusEffectType = {
   POISON: 2,
   SLOW: 3,
   GLASS_CANNON: 4,
+  LENGTH: 5,
 }
 
 function nameFromType(type) {
@@ -13,6 +14,7 @@ function nameFromType(type) {
   if (t === StatusEffectType.POISON) return "Poison"
   if (t === StatusEffectType.SLOW) return "Slow"
   if (t === StatusEffectType.GLASS_CANNON) return "Glass cannon"
+  if (t === StatusEffectType.LENGTH) return "Length"
   return ""
 }
 

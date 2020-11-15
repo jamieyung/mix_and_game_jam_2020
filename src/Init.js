@@ -31,15 +31,17 @@ scene.update = function() {
         max_hp: 20,
         hp: 15,
         deck: [
-          cards.poke,
+          // cards.poke,
           cards.hit,
-          cards.heal,
+          // cards.heal,
           cards.leech,
-          cards.harden,
-          cards.berserk,
-          cards.poison,
-          cards.mud,
-          cards.glass_cannon
+          // cards.harden,
+          // cards.berserk,
+          // cards.poison,
+          // cards.mud,
+          // cards.glass_cannon
+          cards.verbosify,
+          cards.succinct,
         ],
         gold: 0, // TODO
         ult: {}, // TODO
