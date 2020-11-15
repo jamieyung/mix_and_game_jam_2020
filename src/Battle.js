@@ -272,21 +272,23 @@ function executeCardEffect(asPlayer, card) {
   const self = asPlayer ? $.player : $.enemy
   const opponent = asPlayer ? $.enemy : $.player
 
-  if (card.effect.type === EffectType.DAMAGE) {
-    opponent.hp = Math.max(0, opponent.hp - card.effect.amount)
-    opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
-    opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
-  } else if (card.effect.type === EffectType.HEAL) {
-    self.hp = Math.min(self.max_hp, self.hp + card.effect.amount)
-    self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
-    self.health_text_obj.text = self.hp + "/" + self.max_hp
-  } else if (card.effect.type === EffectType.LEECH) {
-    opponent.hp = Math.min(opponent.max_hp, opponent.hp - card.effect.amount)
-    opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
-    opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
-    self.hp = Math.min(self.max_hp, self.hp + card.effect.amount)
-    self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
-    self.health_text_obj.text = self.hp + "/" + self.max_hp
+  for (let effect of card.effects) {
+    if (effect.type === EffectType.DAMAGE) {
+      opponent.hp = Math.max(0, opponent.hp - effect.amount)
+      opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
+      opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
+    } else if (effect.type === EffectType.HEAL) {
+      self.hp = Math.min(self.max_hp, self.hp + effect.amount)
+      self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
+      self.health_text_obj.text = self.hp + "/" + self.max_hp
+    } else if (effect.type === EffectType.LEECH) {
+      opponent.hp = Math.min(opponent.max_hp, opponent.hp - effect.amount)
+      opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
+      opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
+      self.hp = Math.min(self.max_hp, self.hp + effect.amount)
+      self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
+      self.health_text_obj.text = self.hp + "/" + self.max_hp
+    }
   }
 }
 
