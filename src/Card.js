@@ -22,6 +22,13 @@ const cards = {
       { type: EffectType.HEAL, amount: 1, target_self: true }
     ]
   },
+  replenish: {
+    name: "Replenish",
+    cost: 4,
+    effects: [
+      { type: EffectType.HEAL, amount: 8, target_self: true }
+    ]
+  },
   leech: {
     name: "Leech",
     cost: 1,
@@ -29,11 +36,39 @@ const cards = {
       { type: EffectType.LEECH, amount: 1, target_self: false }
     ]
   },
+  lifesteal: {
+    name: "Life Steal",
+    cost: 3,
+    effects: [
+      { type: EffectType.LEECH, amount: 2, target_self: false }
+    ]
+  },
+  bite: {
+    name: "Bite",
+    cost: 1,
+    effects: [
+      { type: EffectType.DAMAGE, amount: 2, target_self: false }
+    ]
+  },
   poke: {
     name: "Poke",
     cost: 1,
     effects: [
       { type: EffectType.DAMAGE, amount: 1, target_self: false }
+    ]
+  },
+  ram: {
+    name: "Ram",
+    cost: 2,
+    effects: [
+      { type: EffectType.DAMAGE, amount: 2, target_self: false }
+    ]
+  },
+  crunch: {
+    name: "Crunch",
+    cost: 3,
+    effects: [
+      { type: EffectType.DAMAGE, amount: 3, target_self: false }
     ]
   },
   harden: {
@@ -45,7 +80,7 @@ const cards = {
   },
   berserk: {
     name: "Berserk",
-    cost: 2,
+    cost: 3,
     effects: [
       { type: EffectType.APPLY_STATUS_EFFECT, status_effect_type: SE.BERSERK, duration_secs: 10, target_self: true }
     ]
