@@ -59,8 +59,8 @@ scene.create = function(input) {
     $.nodeid_to_char[nodeId] = availableKeys[0]
     availableKeys = availableKeys.substring(1)
     const node = $.floor.nodes[nodeId]
-    const circle = scene.add.circle(node.x, node.y, 60, 0x805920)
-    circle.setScale(1, 0.3)
+    const circle = scene.add.circle(node.x, node.y, 100, 0x805920)
+    circle.setScale(1, 0.5)
     circle.setInteractive()
     circle.on("pointerup", function() {
       tryTravelToNode(nodeId)
@@ -72,14 +72,15 @@ scene.create = function(input) {
       // do nothing
     } else if (node.contents.type === NodeContentsType.ENEMY) {
       const enemy_sprite_obj = scene.add.image(node.x, node.y + 5, node.contents.enemyId)
-      enemy_sprite_obj.setOrigin(0.5, 0.95)
-      enemy_sprite_obj.setScale(0.06)
+      enemy_sprite_obj.setOrigin(0.5, 0.88)
+      enemy_sprite_obj.setScale(0.08)
       $.node_contents_layer.add(enemy_sprite_obj)
     }
 
     else if (node.contents.type === NodeContentsType.EXIT) {
-      const exit_obj = scene.add.bitmapText(node.x, node.y, "monoid", "E")
-      exit_obj.setFontSize(20).setOrigin(0.5, 0.5)
+      const exit_obj = scene.add.image(node.x, node.y, "exit")
+      exit_obj.setOrigin(0.5, 0.55)
+      exit_obj.setScale(0.05)
       $.node_contents_layer.add(exit_obj)
     }
 
@@ -92,7 +93,7 @@ scene.create = function(input) {
   const playerStartNode = floor.nodes[floor.playerStartNodeId]
   $.player_overworld_info.obj = scene.add.image(playerStartNode.x, playerStartNode.y + 5, "hero_front")
   $.player_overworld_info.obj.setOrigin(0.47, 0.95)
-  $.player_overworld_info.obj.setScale(0.08)
+  $.player_overworld_info.obj.setScale(0.09)
 
   refreshTargetNodeKeys()
 }
@@ -151,7 +152,7 @@ function refreshTargetNodeKeys() {
       tryTravelToNode(nodeId)
     })
     const node = $.floor.nodes[nodeId]
-    const text_obj = scene.add.bitmapText(node.x, node.y + 30, "monoid", c) // TODO hardcoded
+    const text_obj = scene.add.bitmapText(node.x, node.y + 65, "monoid", c)
     text_obj.setFontSize(20).setOrigin(0.5, 0.5)
     $.target_node_keys_layer.add(text_obj)
     $.target_node_keys.push({

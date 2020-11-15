@@ -33,29 +33,34 @@ let $ = {}
 scene.create = function(input) {
   console.log("Battle", input)
 
+  scene.sound.pauseOnBlur = false
+
   $ = {
     player: {
       max_hp: input.player.max_hp,
       hp: input.player.hp,
       status_effects: {},
-      status_effects_text_obj: undefined, //initialised below
       deck: input.player.deck,
       gold: input.player.gold,
       ult: input.player.ult,
       inventory: input.player.inventory,
       hand: [], // initialised below
-      handX: 100,
+      handX: 50,
+      handY: 50,
       currentHandCard: undefined,
+      name_text_obj: undefined, // initialised below
       health_bar_bg: undefined, // initialised below
       health_bar_fg: undefined, // initialised below
       health_text_obj: undefined, // initialised below
+      status_effects_text_obj: undefined, //initialised below
+      character_sprite: undefined, // initialised below
     },
     enemy: {
+      id: input.enemy.id,
       name: input.enemy.name,
       max_hp: input.enemy.hp,
       hp: input.enemy.hp,
       status_effects: {},
-      status_effects_text_obj: undefined, //initialised below
       deck: input.enemy.deck,
       characters_per_second: input.enemy.characters_per_second,
       casting_cooldown_ms: input.enemy.casting_cooldown_ms,
@@ -63,12 +68,15 @@ scene.create = function(input) {
       n_characters_between_mistakes: input.enemy.n_characters_between_mistakes,
       characters_until_next_mistake: 0, // initialised below
       hand: [], // initialised below
-      handX: 500,
+      handX: 450,
+      handY: 170,
       currentHandCard: undefined,
       name_text_obj: undefined, // initialised below
       health_bar_bg: undefined, // initialised below
       health_bar_fg: undefined, // initialised below
       health_text_obj: undefined, // initialised below
+      status_effects_text_obj: undefined, //initialised below
+      character_sprite: undefined, // initialised below
       ms_until_next_char: 0,
     },
     music: {
@@ -82,27 +90,31 @@ scene.create = function(input) {
     difficulty: input.difficulty
   }
 
-  $.player.status_effects_text_obj = scene.add.bitmapText(100, 60, "monoid", "").setOrigin(0, 0.5)
-  $.player.status_effects_text_obj.setFontSize(20)
-  initHand($.player, 100)
-  $.player.name_text_obj = scene.add.bitmapText(100, 20, "monoid", "You").setOrigin(0, 0.5)
+  initHand($.player)
+  $.player.name_text_obj = scene.add.bitmapText(150, 520, "monoid", "You").setOrigin(0, 0.5)
   $.player.name_text_obj.setFontSize(20)
-  $.player.health_bar_bg = scene.add.rectangle(100, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
-  $.player.health_bar_fg = scene.add.rectangle(100, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
+  $.player.health_bar_bg = scene.add.rectangle(150, 540, 200, 20, 0xe82727).setOrigin(0, 0.5)
+  $.player.health_bar_fg = scene.add.rectangle(150, 540, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
   $.player.health_bar_fg.setScale($.player.hp/$.player.max_hp, 1)
-  $.player.health_text_obj = scene.add.bitmapText(200, 40, "monoid", $.player.hp + "/" + $.player.max_hp).setOrigin(0.5, 0.5)
+  $.player.health_text_obj = scene.add.bitmapText(250, 540, "monoid", $.player.hp + "/" + $.player.max_hp).setOrigin(0.5, 0.5)
   $.player.health_text_obj.setFontSize(20)
+  $.player.status_effects_text_obj = scene.add.bitmapText(150, 560, "monoid", "").setOrigin(0, 0.5)
+  $.player.status_effects_text_obj.setFontSize(20)
+  $.player.character_sprite = scene.add.image(80, 550, "hero_back")
+  $.player.character_sprite.setScale(0.1)
 
-  $.enemy.status_effects_text_obj = scene.add.bitmapText(500, 60, "monoid", "").setOrigin(0, 0.5)
-  $.enemy.status_effects_text_obj.setFontSize(20)
   recalcEnemyCharactersUntilNextMistake()
-  initHand($.enemy, 100)
-  $.enemy.name_text_obj = scene.add.bitmapText(500, 20, "monoid", $.enemy.name).setOrigin(0, 0.5)
+  initHand($.enemy)
+  $.enemy.name_text_obj = scene.add.bitmapText(450, 60, "monoid", $.enemy.name).setOrigin(0, 0.5)
   $.enemy.name_text_obj.setFontSize(20)
-  $.enemy.health_bar_bg = scene.add.rectangle(500, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
-  $.enemy.health_bar_fg = scene.add.rectangle(500, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
-  $.enemy.health_text_obj = scene.add.bitmapText(600, 40, "monoid", $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
+  $.enemy.health_bar_bg = scene.add.rectangle(450, 80, 200, 20, 0xe82727).setOrigin(0, 0.5)
+  $.enemy.health_bar_fg = scene.add.rectangle(450, 80, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
+  $.enemy.health_text_obj = scene.add.bitmapText(550, 80, "monoid", $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
   $.enemy.health_text_obj.setFontSize(20)
+  $.enemy.status_effects_text_obj = scene.add.bitmapText(450, 100, "monoid", "").setOrigin(0, 0.5)
+  $.enemy.status_effects_text_obj.setFontSize(20)
+  $.enemy.character_sprite = scene.add.image(730, 90, $.enemy.id)
+  $.enemy.character_sprite.setScale(0.08)
 
   tickStatusEffects(0)
 
@@ -119,7 +131,7 @@ scene.create = function(input) {
   $.music.intro.play()
 }
 
-function initHand(target, y) {
+function initHand(target) {
   const forbidden_initial_characters = []
   for (let i = 0; i < 6; i++) {
     const handCard = mkHandCard({
@@ -130,7 +142,7 @@ function initHand(target, y) {
     })
     forbidden_initial_characters.push(handCard.orig_text[0])
     handCard.root.x = target.handX
-    handCard.root.y = y + i*60
+    handCard.root.y = target.handY + i*60
     target.hand.push(handCard)
   }
 }
@@ -610,7 +622,7 @@ function redrawCard(target, card) {
     if (target.hand[i] === card) {
       target.hand[i] = newHandCard
       newHandCard.root.x = target.handX
-      newHandCard.root.y = 100 + i*60
+      newHandCard.root.y = target.handY + i*60
       break
     }
   }
@@ -679,6 +691,7 @@ function cleanup() {
     target.health_bar_bg.destroy()
     target.health_bar_fg.destroy()
     target.health_text_obj.destroy()
+    target.character_sprite.destroy()
     for (let card of target.hand) card.destroy()
   }
 }

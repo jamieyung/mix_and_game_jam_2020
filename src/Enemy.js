@@ -2,12 +2,14 @@ import { cards } from "./Card.js"
 
 const enemies = {
   troll: {
+    id: "troll",
     name: "Troll",
     hp: 10,
     deck: [
-      cards.poke,
-      cards.heal,
-      // cards.harden,
+      // cards.poke,
+      // cards.heal,
+      cards.harden,
+      cards.mud,
     ],
     characters_per_second: 4,
     casting_cooldown_ms: 500,
@@ -17,6 +19,7 @@ const enemies = {
     }
   },
   bull: {
+    id: "bull",
     name: "Bull",
     hp: 10,
     deck: [

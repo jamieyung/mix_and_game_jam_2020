@@ -17,13 +17,26 @@ scene.preload = function() {
 
   scene.load.bitmapFont("monoid", "./font/monoid_0.png", "./font/monoid.fnt")
 
-  scene.load.image("bookworm", "./img/bookworm.png")
+  scene.load.image("hero_front", "./img/hero_front.png")
+  scene.load.image("troll", "./img/troll.png")
   scene.load.image("bull", "./img/bull.png")
+  scene.load.image("exit", "./img/exit.png")
+
+  scene.load.image("bookworm", "./img/bookworm.png")
   scene.load.image("cobra", "./img/cobra.png")
   scene.load.image("hero_back", "./img/hero_back.png")
-  scene.load.image("hero_front", "./img/hero_front.png")
   scene.load.image("hippo", "./img/hippo.png")
-  scene.load.image("troll", "./img/troll.png")
+
+  scene.load.image("berserk", "./img/berserk.png")
+  scene.load.image("damage", "./img/damage.png")
+  scene.load.image("glass_cannon", "./img/glass_cannon.png")
+  scene.load.image("heal", "./img/heal.png")
+  scene.load.image("leech", "./img/leech.png")
+  scene.load.image("length_down", "./img/length_down.png")
+  scene.load.image("length_up", "./img/length_up.png")
+  scene.load.image("poison", "./img/poison.png")
+  scene.load.image("shield", "./img/shield.png")
+  scene.load.image("slow", "./img/slow.png")
 }
 
 // input.floor
