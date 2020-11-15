@@ -15,6 +15,7 @@ var $ = {}
 // input.player.gold TODO
 // input.player.ult TODO
 // input.player.inventory TODO
+// input.enemy.name TODO
 // input.enemy.hp
 // input.enemy.deck
 // input.enemy.characters_per_second
@@ -33,10 +34,10 @@ scene.init = function(input) {
       gold: input.player.gold,
       ult: input.player.ult,
       inventory: input.player.inventory,
-      hand: [], // initialised further down
+      hand: [], // initialised below
       handX: 100,
       currentHandCard: undefined,
-      health_text_obj: undefined, // initialised further down
+      health_text_obj: undefined, // initialised below
     },
     enemy: {
       max_hp: input.enemy.hp,
@@ -46,11 +47,11 @@ scene.init = function(input) {
       casting_cooldown_ms: input.enemy.casting_cooldown_ms,
       cur_casting_cooldown_ms: input.enemy.casting_cooldown_ms,
       n_characters_between_mistakes: input.enemy.n_characters_between_mistakes,
-      characters_until_next_mistake: 0, // initialised further down
-      hand: [], // initialised further down
+      characters_until_next_mistake: 0, // initialised below
+      hand: [], // initialised below
       handX: 600,
       currentHandCard: undefined,
-      health_text_obj: undefined, // initialised further down
+      health_text_obj: undefined, // initialised below
       ms_until_next_char: 0
     },
     keys: [],

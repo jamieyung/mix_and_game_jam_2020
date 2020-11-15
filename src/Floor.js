@@ -1,19 +1,23 @@
 const NodeContentsType = {
   NONE: 0,
-  ENEMY: 1
+  PLAYER: 1,
+  ENEMY: 2
 }
 
 const floors = [
   { nodes:
-      [ { id: 0, x: 100, y: 300, contents: { type: NodeContentsType.NONE } }
-      , { id: 1, x: 200, y: 300, contents: { type: NodeContentsType.ENEMY, enemyId: "enemy1" } }
+      [ { x: 100, y: 300, contents: { type: NodeContentsType.PLAYER } }
+      , { x: 250, y: 300, contents: { type: NodeContentsType.NONE } }
+      , { x: 450, y: 300, contents: { type: NodeContentsType.ENEMY, enemyId: "enemy1" } }
       ]
   , edges:
       [ [0, 1]
+      , [1, 2]
       ]
   }
 ]
 
 export {
+  NodeContentsType,
   floors
 }

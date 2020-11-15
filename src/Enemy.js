@@ -2,6 +2,7 @@ import { cards } from "./Card.js"
 
 const enemies = {
   enemy1: {
+    name: "Bob",
     hp: 10,
     deck: [
       cards.poke,

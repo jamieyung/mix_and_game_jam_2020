@@ -1,6 +1,3 @@
-import { cards } from "./Card.js"
-import { enemies } from "./Enemy.js"
-
 var scene = new Phaser.Scene({ key: "Init" })
 
 var $ = {}
@@ -16,19 +13,8 @@ scene.init = function(input) {
 
 scene.update = function() {
   if ($.enter.isDown) {
-    scene.scene.start("Battle", {
-      player: {
-        max_hp: 20,
-        hp: 15,
-        deck: [
-          cards.hit,
-          cards.heal
-        ],
-        gold: 0, // TODO
-        ult: {}, // TODO
-        inventory: {} // TODO
-      },
-      enemy: enemies.enemy1
+    scene.scene.start("Overworld", {
+      floorId: 0
     })
   }
 }
