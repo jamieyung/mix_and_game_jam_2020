@@ -234,6 +234,8 @@ scene.update = function(_, dt) {
 
     else if (target.currentHandCard.state === CardState.DONE_MISTAKE_ANIM) {
       target.currentHandCard.state = CardState.READY
+      target.currentHandCard.anim_container.x = 0
+      target.currentHandCard.anim_container.y = 0
       target.currentHandCard.remaining = target.currentHandCard.orig_text
       remakeCardCharObjsBasedOnRemaining(target.currentHandCard)
       target.currentHandCard = undefined
@@ -461,6 +463,7 @@ function executeCardEffect(asPlayer, card) {
   const opponent = asPlayer ? $.enemy : $.player
 
   // accounting
+  let didLeech = false
   let healAmount = 0
   let shieldWasHit = false
   let hpDamageAmount = 0
@@ -515,6 +518,7 @@ function executeCardEffect(asPlayer, card) {
       target_opp.hp = Math.min(target_opp.max_hp, target_opp.hp + effect.amount)
       redrawHealthBar(target_opp)
 
+      didLeech = true
       healAmount += amount
       hpDamageAmount += amount
     }
@@ -580,9 +584,14 @@ function executeCardEffect(asPlayer, card) {
   }
 
   // sfx
+  if (didLeech) {
+    scene.sound.play("leech")
+  }
+
   if (healAmount > 0) {
     scene.sound.play("heal")
   }
+
   if (hpDamageAmount > 2) {
     scene.sound.play("heavy_attack")
   } else if (hpDamageAmount > 0) {
