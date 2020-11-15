@@ -100,7 +100,7 @@ scene.create = function(input) {
   $.enemy.health_text_obj = scene.add.text(600, 40, $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
   $.enemy.health_text_obj.setFontSize(20)
 
-  recalcStatusEffects(0)
+  tickStatusEffects(0)
 
   // init key listeners
   for (let i = 65; i <= 90; i++) {
@@ -249,7 +249,7 @@ scene.update = function(_, dt) {
     }
   }
 
-  recalcStatusEffects(dt)
+  tickStatusEffects(dt)
 
   // Check for end of battle
   if ($.player.hp <= 0) {
@@ -276,7 +276,7 @@ scene.update = function(_, dt) {
   }
 }
 
-function recalcStatusEffects(dt) {
+function tickStatusEffects(dt) {
   const xs = [$.player, $.enemy]
   for (const target of xs) {
     // recalc/prune effects
@@ -290,6 +290,18 @@ function recalcStatusEffects(dt) {
         status_effect.remaining_secs -= dt/1000
         if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
       }
+
+      else if (t === StatusEffectType.POISON) {
+        status_effect.remaining_secs -= dt/1000
+        if (status_effect.ms_until_next_hit > 0) {
+          status_effect.ms_until_next_hit -= dt
+        } else {
+          status_effect.ms_until_next_hit = status_effect.ms_between_hits
+          target.hp = Math.max(0, target.hp - 1)
+          redrawHealthBar(target)
+        }
+        if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
+      }
     }
 
     // compile render string
@@ -300,6 +312,7 @@ function recalcStatusEffects(dt) {
       const name = SEnameFromType(type)
       if (t === StatusEffectType.SHIELD) str += name + " " + status_effect.amount
       else if (t === StatusEffectType.BERSERK) str += name + " " + status_effect.remaining_secs.toFixed(0)
+      else if (t === StatusEffectType.POISON) str += name + " " + status_effect.remaining_secs.toFixed(0)
     }
 
     target.status_effects_text_obj.text = str
@@ -335,16 +348,14 @@ function executeCardEffect(asPlayer, card) {
       }
 
       opponent.hp = Math.max(0, opponent.hp - amount)
-      opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
-      opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
+      redrawHealthBar(opponent)
 
       damageAmount += amount
     }
 
     else if (effect.type === EffectType.HEAL) {
       self.hp = Math.min(self.max_hp, self.hp + effect.amount)
-      self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
-      self.health_text_obj.text = self.hp + "/" + self.max_hp
+      redrawHealthBar(self)
     }
 
     else if (effect.type === EffectType.LEECH) {
@@ -363,11 +374,9 @@ function executeCardEffect(asPlayer, card) {
       }
 
       opponent.hp = Math.min(opponent.max_hp, opponent.hp - amount)
-      opponent.health_bar_fg.setScale(opponent.hp/opponent.max_hp, 1)
-      opponent.health_text_obj.text = opponent.hp + "/" + opponent.max_hp
+      redrawHealthBar(opponent)
       self.hp = Math.min(self.max_hp, self.hp + effect.amount)
-      self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
-      self.health_text_obj.text = self.hp + "/" + self.max_hp
+      redrawHealthBar(self)
 
       damageAmount += amount
     }
@@ -381,15 +390,28 @@ function executeCardEffect(asPlayer, card) {
       if (!self.status_effects[StatusEffectType.BERSERK]) self.status_effects[StatusEffectType.BERSERK] = { remaining_secs: 0 }
       self.status_effects[StatusEffectType.BERSERK].remaining_secs += effect.duration_secs
     }
+
+    else if (effect.type === EffectType.POISON) {
+      if (!opponent.status_effects[StatusEffectType.POISON]) opponent.status_effects[StatusEffectType.POISON] = {
+        remaining_secs: 0,
+        ms_between_hits: 1000,
+        ms_until_next_hit: 1000,
+      }
+      opponent.status_effects[StatusEffectType.POISON].remaining_secs += effect.duration_secs
+    }
   }
 
   if (berserkDamageWasDone) {
     self.hp = Math.min(self.max_hp, self.hp - damageAmount/2)
-    self.health_bar_fg.setScale(self.hp/self.max_hp, 1)
-    self.health_text_obj.text = self.hp + "/" + self.max_hp
+    redrawHealthBar(self)
   }
 
-  recalcStatusEffects(0)
+  tickStatusEffects(0)
+}
+
+function redrawHealthBar(target) {
+  target.health_bar_fg.setScale(target.hp/target.max_hp, 1)
+  target.health_text_obj.text = target.hp + "/" + target.max_hp
 }
 
 function redrawCurrentHandCard(target) {

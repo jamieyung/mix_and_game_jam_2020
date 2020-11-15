@@ -3,7 +3,8 @@ const EffectType = {
   HEAL: 1,
   LEECH: 2,
   SHIELD: 3,
-  BERSERK: 4
+  BERSERK: 4,
+  POISON: 5,
 }
 
 const cards = {
@@ -47,6 +48,13 @@ const cards = {
     cost: 2,
     effects: [
       { type: EffectType.BERSERK, duration_secs: 10 }
+    ]
+  },
+  poison: {
+    name: "Poison",
+    cost: 2,
+    effects: [
+      { type: EffectType.POISON, duration_secs: 10 }
     ]
   },
 }
