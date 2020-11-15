@@ -9,8 +9,8 @@ var $ = {}
 // Player stats (HP, Deck, Gold, Ult meter, Inventory, Which character you are)
 // Enemy stats (HP, Deck, characters per second, Which character they are)
 //
-// input player.max_hp
-// input player.hp
+// input.player.max_hp
+// input.player.hp
 // input.player.deck - an array of Cards
 // input.player.gold TODO
 // input.player.ult TODO
