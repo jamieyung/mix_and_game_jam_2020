@@ -5,6 +5,7 @@ const EffectType = {
   SHIELD: 3,
   BERSERK: 4,
   POISON: 5,
+  SLOW: 6,
 }
 
 const cards = {
@@ -55,6 +56,13 @@ const cards = {
     cost: 2,
     effects: [
       { type: EffectType.POISON, duration_secs: 10 }
+    ]
+  },
+  mud: {
+    name: "Mud",
+    cost: 2,
+    effects: [
+      { type: EffectType.SLOW, duration_secs: 3 }
     ]
   },
 }

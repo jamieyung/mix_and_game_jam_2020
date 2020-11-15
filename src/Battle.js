@@ -227,8 +227,11 @@ scene.update = function(_, dt) {
 
   // Enemy update
   if ($.enemy.currentHandCard) {
+    let dt_fac = 1
+    if ($.enemy.status_effects[StatusEffectType.SLOW]) dt_fac *= 0.5
+
     if ($.enemy.ms_until_next_char > 0) {
-      $.enemy.ms_until_next_char -= dt
+      $.enemy.ms_until_next_char -= dt * dt_fac
     } else { // make enemy type a character
       $.enemy.ms_until_next_char = 1000 / $.enemy.characters_per_second
       if ($.enemy.characters_until_next_mistake > 0) { // successful keystroke
@@ -311,6 +314,11 @@ function tickStatusEffects(dt) {
         }
         if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
       }
+
+      else if (t === StatusEffectType.SLOW) {
+        status_effect.remaining_secs -= dt/1000
+        if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
+      }
     }
 
     // compile render string
@@ -322,6 +330,7 @@ function tickStatusEffects(dt) {
       if (t === StatusEffectType.SHIELD) str += name + " " + status_effect.amount
       else if (t === StatusEffectType.BERSERK) str += name + " " + status_effect.remaining_secs.toFixed(0)
       else if (t === StatusEffectType.POISON) str += name + " " + status_effect.remaining_secs.toFixed(0)
+      else if (t === StatusEffectType.SLOW) str += name + " " + status_effect.remaining_secs.toFixed(0)
     }
 
     target.status_effects_text_obj.text = str
@@ -407,6 +416,11 @@ function executeCardEffect(asPlayer, card) {
         ms_until_next_hit: 1000,
       }
       opponent.status_effects[StatusEffectType.POISON].remaining_secs += effect.duration_secs
+    }
+
+    else if (effect.type === EffectType.SLOW) {
+      if (!opponent.status_effects[StatusEffectType.SLOW]) opponent.status_effects[StatusEffectType.SLOW] = { remaining_secs: 0 }
+      opponent.status_effects[StatusEffectType.SLOW].remaining_secs += effect.duration_secs
     }
   }
 

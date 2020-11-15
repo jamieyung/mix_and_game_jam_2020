@@ -30,12 +30,13 @@ scene.update = function() {
         hp: 15,
         deck: [
           cards.hit,
-          cards.hit,
-          cards.heal,
-          cards.leech,
-          cards.harden,
-          cards.berserk,
-          // cards.poison
+          // cards.hit,
+          // cards.heal,
+          // cards.leech,
+          // cards.harden,
+          // cards.berserk,
+          // cards.poison,
+          cards.mud
         ],
         gold: 0, // TODO
         ult: {}, // TODO
