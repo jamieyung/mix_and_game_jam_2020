@@ -11,6 +11,7 @@ scene.preload = function() {
 
   scene.load.audio("light_attack_01", "./audio/Light_Attack_01.mp3")
   scene.load.audio("heavy_attack_01", "./audio/Heavy_Attack_01.mp3")
+  scene.load.audio("shield_hit", "./audio/Shield_Hit_02.mp3")
   scene.load.audio("heal", "./audio/Heal_SFX.mp3")
 
   scene.load.bitmapFont("monoid", "./font/monoid.png", "./font/monoid.xml")

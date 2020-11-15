@@ -5,8 +5,9 @@ const enemies = {
     name: "Bob",
     hp: 20,
     deck: [
-      cards.poke,
-      cards.heal,
+      // cards.poke,
+      // cards.heal,
+      cards.harden,
     ],
     characters_per_second: 4,
     casting_cooldown_ms: 500,

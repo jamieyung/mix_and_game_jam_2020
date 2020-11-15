@@ -79,6 +79,7 @@ scene.create = function(input) {
       heal: scene.sound.add("heal"),
       light_attack: scene.sound.add("light_attack_01"),
       heavy_attack: scene.sound.add("heavy_attack_01"),
+      shield_hit: scene.sound.add("shield_hit"),
     },
     keys: [],
     down_keys: {},
@@ -143,7 +144,9 @@ function initHand(target, y) {
 const CardState = {
   READY: 0,
   DELETING_CHAR: 1,
-  READY_TO_SLIDE: 2
+  DONE_DELETING_CHAR: 2,
+  DOING_MISTAKE_ANIM: 3,
+  DONE_MISTAKE_ANIM: 4,
 }
 
 // args.forbidden_initial_characters - array of characters (case-insensitive)
@@ -155,16 +158,19 @@ function mkHandCard(args) {
 
   const root = scene.add.container(0, 0)
 
+  const anim_container = scene.add.container(0, 0)
+  root.add(anim_container)
+
   const card_name_text_obj = scene.add.bitmapText(0, 0, "monoid", args.card.name)
   card_name_text_obj.setTint(0x3a7ea1)
   card_name_text_obj.setScale(0.2)
-  root.add(card_name_text_obj)
+  anim_container.add(card_name_text_obj)
 
   const char_objs = []
   for (let i = 0; i < orig_text.length; i++) {
     const char_obj = scene.add.bitmapText(i*24, 15, "monoid", orig_text[i])
     char_obj.setScale(0.5)
-    root.add(char_obj)
+    anim_container.add(char_obj)
     char_objs.push(char_obj)
   }
 
@@ -173,11 +179,11 @@ function mkHandCard(args) {
     remaining: orig_text,
     card: args.card,
     root: root,
+    anim_container: anim_container,
     char_objs: char_objs,
     state: CardState.READY,
     destroy: function () {
-      card_name_text_obj.destroy()
-      for (let x of char_objs) x.destroy()
+      root.removeAll(true)
       root.destroy()
     }
   }
@@ -201,9 +207,11 @@ scene.update = function(_, dt) {
     delete $.down_keys[keyCode]
   }
 
+  // currentHandCard anim exit logic
   const xs = [$.player, $.enemy]
   for (const target of xs) {
-    if (target.currentHandCard && target.currentHandCard.state === CardState.READY_TO_SLIDE) {
+    if (!target.currentHandCard) continue
+    if (target.currentHandCard.state === CardState.DONE_DELETING_CHAR) {
       target.currentHandCard.state = CardState.READY
       let head_char_obj = target.currentHandCard.char_objs.shift()
       head_char_obj.destroy()
@@ -216,6 +224,13 @@ scene.update = function(_, dt) {
           $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
         }
       }
+    }
+
+    else if (target.currentHandCard.state === CardState.DONE_MISTAKE_ANIM) {
+      target.currentHandCard.state = CardState.READY
+      target.currentHandCard.remaining = target.currentHandCard.orig_text
+      remakeCardCharObjsBasedOnRemaining(target.currentHandCard)
+      target.currentHandCard = undefined
     }
   }
 
@@ -230,16 +245,7 @@ scene.update = function(_, dt) {
       if ($.player.currentHandCard.state === CardState.READY) {
         const nextKeyCode = $.player.currentHandCard.remaining[0].toUpperCase().charCodeAt(0)
         if (nextKeyCode === keyCode) { // success
-          $.player.currentHandCard.state = CardState.DELETING_CHAR
-          $.player.currentHandCard.remaining = $.player.currentHandCard.remaining.substring(1)
-          let head_char_obj = $.player.currentHandCard.char_objs[0]
-          scene.tweens.add({
-            targets: head_char_obj,
-            alpha: { from: 1, to: 0 },
-            duration: !!$.player.status_effects[StatusEffectType.SLOW] ? 150 : 0
-          }).on("complete", function() {
-            $.player.currentHandCard.state = CardState.READY_TO_SLIDE
-          })
+          enterDeletingCharState($.player)
         } else { // mistake
           if ($.player.status_effects[StatusEffectType.GLASS_CANNON]) { // destroy card and take damage
             redrawCurrentHandCard($.player)
@@ -247,10 +253,7 @@ scene.update = function(_, dt) {
             $.audio.light_attack.play()
             redrawHealthBar($.player)
           } else { // reset the card
-            $.player.currentHandCard.remaining = $.player.currentHandCard.orig_text
-            remakeCardCharObjsBasedOnRemaining($.player.currentHandCard)
-            for (let x of $.player.currentHandCard.char_objs) x.setTint(0xffffff)
-            $.player.currentHandCard = undefined
+            enterMistakeAnimState($.player)
           }
         }
       }
@@ -286,23 +289,11 @@ scene.update = function(_, dt) {
         $.enemy.ms_until_next_char = 1000 / $.enemy.characters_per_second
         if ($.enemy.characters_until_next_mistake > 0) { // successful keystroke
           $.enemy.characters_until_next_mistake--
-          $.enemy.currentHandCard.state = CardState.DELETING_CHAR
-          $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.remaining.substring(1)
-          let head_char_obj = $.enemy.currentHandCard.char_objs[0]
-          scene.tweens.add({
-            targets: head_char_obj,
-            alpha: { from: 1, to: 0 },
-            duration: !!$.enemy.status_effects[StatusEffectType.SLOW] ? 150 : 0
-          }).on("complete", function() {
-            $.enemy.currentHandCard.state = CardState.READY_TO_SLIDE
-          })
+          enterDeletingCharState($.enemy)
         } else { // mistake, reset the word
           recalcEnemyCharactersUntilNextMistake()
-          $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.orig_text
-          remakeCardCharObjsBasedOnRemaining($.enemy.currentHandCard)
-          for (let x of $.enemy.currentHandCard.char_objs) x.setTint(0xffffff)
-          $.enemy.currentHandCard = undefined
           $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
+          enterMistakeAnimState($.enemy)
         }
       }
     }
@@ -339,6 +330,46 @@ scene.update = function(_, dt) {
       difficulty: $.difficulty,
     })
   }
+}
+
+function enterDeletingCharState(target) {
+  target.currentHandCard.state = CardState.DELETING_CHAR
+  target.currentHandCard.remaining = target.currentHandCard.remaining.substring(1)
+  let head_char_obj = target.currentHandCard.char_objs[0]
+  scene.tweens.add({
+    targets: head_char_obj,
+    alpha: { from: 1, to: 0 },
+    duration: !!target.status_effects[StatusEffectType.SLOW] ? 150 : 0
+  }).on("complete", function() {
+    target.currentHandCard.state = CardState.DONE_DELETING_CHAR
+  })
+}
+
+function enterMistakeAnimState(target) {
+  for (let x of target.currentHandCard.char_objs) x.setTint(0xff5555)
+  target.currentHandCard.state = CardState.DOING_MISTAKE_ANIM
+  scene.tweens.add({
+    targets: target.currentHandCard.anim_container,
+    props: {
+      x: {
+        from: -5,
+        to: 5,
+        ease: function (t) {
+          return (1 + Math.cos(t*10 + Phaser.Math.RND.integerInRange(0, 100)))/2
+        },
+      },
+      y: {
+        from: -2,
+        to: 2,
+        ease: function (t) {
+          return (1 + Math.sin(t*10 + Phaser.Math.RND.integerInRange(0, 100)))/2
+        },
+      },
+    },
+    duration: 200,
+  }).on("complete", function() {
+    target.currentHandCard.state = CardState.DONE_MISTAKE_ANIM
+  })
 }
 
 function tickStatusEffects(dt) {
@@ -424,7 +455,8 @@ function executeCardEffect(asPlayer, card) {
 
   // accounting
   let healAmount = 0
-  let damageAmount = 0
+  let shieldWasHit = false
+  let hpDamageAmount = 0
   let damageMultiplier = 1
   let wasBerserk = !!self.status_effects[StatusEffectType.BERSERK]
   let wasGlassCannon = !!self.status_effects[StatusEffectType.GLASS_CANNON]
@@ -444,12 +476,13 @@ function executeCardEffect(asPlayer, card) {
         const shield_amount = shield_info.amount
         shield_info.amount = Math.max(0, shield_info.amount - amount)
         amount = Math.max(0, amount - shield_amount)
+        shieldWasHit = true
       }
 
       target.hp = Math.max(0, target.hp - amount)
       redrawHealthBar(target)
 
-      damageAmount += amount
+      hpDamageAmount += amount
     }
 
     else if (effect.type === EffectType.HEAL) {
@@ -467,6 +500,7 @@ function executeCardEffect(asPlayer, card) {
         const shield_amount = shield_info.amount
         shield_info.amount = Math.max(0, shield_info.amount - amount)
         amount = Math.max(0, amount - shield_amount)
+        shieldWasHit = true
       }
 
       target.hp = Math.min(target.max_hp, target.hp - amount)
@@ -475,7 +509,7 @@ function executeCardEffect(asPlayer, card) {
       redrawHealthBar(target_opp)
 
       healAmount += amount
-      damageAmount += amount
+      hpDamageAmount += amount
     }
 
     else if (effect.type === EffectType.APPLY_STATUS_EFFECT) {
@@ -523,14 +557,15 @@ function executeCardEffect(asPlayer, card) {
     }
   }
 
-  if (wasBerserk && damageAmount > 0) {
-    let berserkSelfDamageAmount = damageAmount/2
+  if (wasBerserk && hpDamageAmount > 0) {
+    let berserkSelfDamageAmount = hpDamageAmount/2
 
     if (self.status_effects[StatusEffectType.SHIELD]) {
       const shield_info = self.status_effects[StatusEffectType.SHIELD]
       const shield_amount = shield_info.amount
       shield_info.amount = Math.max(0, shield_info.amount - berserkSelfDamageAmount)
       berserkSelfDamageAmount = Math.max(0, berserkSelfDamageAmount - shield_amount)
+      shieldWasHit = true
     }
 
     self.hp = Math.min(self.max_hp, self.hp - berserkSelfDamageAmount)
@@ -541,10 +576,12 @@ function executeCardEffect(asPlayer, card) {
   if (healAmount > 0) {
     $.audio.heal.play()
   }
-  if (damageAmount > 2) {
+  if (hpDamageAmount > 2) {
     $.audio.heavy_attack.play()
-  } else if (damageAmount > 0) {
+  } else if (hpDamageAmount > 0) {
     $.audio.light_attack.play()
+  } else if (shieldWasHit) {
+    $.audio.shield_hit.play()
   }
 
   tickStatusEffects(0)
@@ -632,7 +669,6 @@ function generateWords(forbidden_initial_characters, nwords, word_length_avg, wo
   return text
 }
 
-// in order of add calls in create function
 function cleanup() {
   $.music.intro.destroy()
   $.music.loop.destroy()
@@ -640,21 +676,20 @@ function cleanup() {
   $.audio.heal.destroy()
   $.audio.light_attack.destroy()
   $.audio.heavy_attack.destroy()
-
-  $.player.status_effects_text_obj.destroy()
-  $.player.name_text_obj.destroy()
-  $.player.health_bar_bg.destroy()
-  $.player.health_bar_fg.destroy()
-  $.player.health_text_obj.destroy()
-
-  $.enemy.status_effects_text_obj.destroy()
-  $.enemy.name_text_obj.destroy()
-  $.enemy.health_bar_bg.destroy()
-  $.enemy.health_bar_fg.destroy()
-  $.enemy.health_text_obj.destroy()
+  $.audio.shield_hit.destroy()
 
   for (let key of $.keys) {
     key.destroy()
+  }
+
+  const xs = [$.player, $.opponent]
+  for (let target of xs) {
+    target.status_effects_text_obj.destroy()
+    target.name_text_obj.destroy()
+    target.health_bar_bg.destroy()
+    target.health_bar_fg.destroy()
+    target.health_text_obj.destroy()
+    for (let card of target.hand) card.destroy()
   }
 }
 
