@@ -47,7 +47,7 @@ scene.update = function() {
       },
       difficulty: {
         word_length: {
-          avg: 5,
+          avg: 4,
           std: 2
         }
       }

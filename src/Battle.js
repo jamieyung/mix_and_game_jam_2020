@@ -164,11 +164,12 @@ function mkHandCard(args) {
   const root = scene.add.container(0, 0)
 
   const card_name_text_obj = scene.add.text(0, 0, args.card.name)
+  card_name_text_obj.setColor("#3a7ea1")
   card_name_text_obj.setFontSize(20)
   root.add(card_name_text_obj)
 
   const text_obj = scene.add.text(0, 15, orig_text)
-  text_obj.setFontSize(40)
+  text_obj.setFontSize(30)
   root.add(text_obj)
 
   return {
@@ -319,7 +320,13 @@ function tickStatusEffects(dt) {
           status_effect.ms_until_next_hit -= dt
         } else {
           status_effect.ms_until_next_hit = status_effect.ms_between_hits
-          target.hp = Math.max(0, target.hp - 1)
+
+          if (target.status_effects[StatusEffectType.SHIELD]) {
+            const shield_info = target.status_effects[StatusEffectType.SHIELD]
+            shield_info.amount = Math.max(0, shield_info.amount - 1)
+          } else {
+            target.hp = Math.max(0, target.hp - 1)
+          }
           redrawHealthBar(target)
         }
         if (status_effect.remaining_secs <= 0) delete target.status_effects[type]

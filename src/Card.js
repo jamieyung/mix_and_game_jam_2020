@@ -54,7 +54,7 @@ const cards = {
     name: "Poison",
     cost: 2,
     effects: [
-      { type: EffectType.APPLY_STATUS_EFFECT, status_effect_type: SE.POISON, duration_secs: 10 }
+      { type: EffectType.APPLY_STATUS_EFFECT, status_effect_type: SE.POISON, duration_secs: 5 }
     ]
   },
   mud: {
