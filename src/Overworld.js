@@ -109,6 +109,7 @@ function handlePlayerArrivedAtNode(node) {
   if (node.contents.type === NodeContentsType.NONE) {
     // do nothing
   } else if (node.contents.type === NodeContentsType.ENEMY) {
+    cleanup()
     scene.scene.start("Battle", {
       player: $.player,
       enemy: enemies[node.contents.enemyId],
@@ -118,6 +119,7 @@ function handlePlayerArrivedAtNode(node) {
     })
   } else if (node.contents.type === NodeContentsType.EXIT) {
     const floor = floors[node.contents.targetFloorIdx]
+    cleanup()
     scene.scene.start("Overworld", {
       floor: JSON.parse(JSON.stringify(floor)), // deep copy
       player: $.player,
@@ -219,6 +221,20 @@ function canProgressPastNode(nodeId) {
 }
 
 scene.update = function() {
+}
+
+// in order of add calls in create function
+function cleanup() {
+  $.nodes_and_edges_layer.removeAll(true) // destroy all children
+  $.nodes_and_edges_layer.destroy()
+  $.node_contents_layer.removeAll(true) // destroy all children
+  $.node_contents_layer.destroy()
+  $.target_node_keys_layer.removeAll(true) // destroy all children
+  $.target_node_keys_layer.destroy()
+  $.player_overworld_info.obj.destroy()
+  for (let x of $.target_node_keys) {
+    x.key_listener.destroy()
+  }
 }
 
 export default scene

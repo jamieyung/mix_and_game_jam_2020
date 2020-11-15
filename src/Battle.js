@@ -276,15 +276,13 @@ scene.update = function(_, dt) {
 
   // Check for end of battle
   if ($.player.hp <= 0) {
-    $.music.intro.stop()
-    $.music.loop.stop()
+    cleanup()
     scene.scene.start("Init")
   } else if ($.enemy.hp <= 0) {
     const floor = JSON.parse(JSON.stringify($.floor))
     floor.nodes[$.playerNodeId].contents = { type: NodeContentsType.NONE }
     floor.playerStartNodeId = $.playerNodeId
-    $.music.intro.stop()
-    $.music.loop.stop()
+    cleanup()
     scene.scene.start("Overworld", {
       floor: floor,
       player: {
@@ -507,6 +505,32 @@ function redrawCurrentHandCard(target) {
   }
 
   target.currentHandCard = undefined
+}
+
+// in order of add calls in create function
+function cleanup() {
+  $.music.intro.destroy()
+  $.music.loop.destroy()
+
+  $.audio.heal.destroy()
+  $.audio.light_attack.destroy()
+  $.audio.heavy_attack.destroy()
+
+  $.player.status_effects_text_obj.destroy()
+  $.player.name_text_obj.destroy()
+  $.player.health_bar_bg.destroy()
+  $.player.health_bar_fg.destroy()
+  $.player.health_text_obj.destroy()
+
+  $.enemy.status_effects_text_obj.destroy()
+  $.enemy.name_text_obj.destroy()
+  $.enemy.health_bar_bg.destroy()
+  $.enemy.health_bar_fg.destroy()
+  $.enemy.health_text_obj.destroy()
+
+  for (let key of $.keys) {
+    key.destroy()
+  }
 }
 
 export default scene

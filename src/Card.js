@@ -10,7 +10,7 @@ const EffectType = {
 const cards = {
   hit: {
     name: "Hit",
-    cost: 1,
+    cost: 2,
     effects: [
       { type: EffectType.DAMAGE, amount: 5 }
     ]
@@ -31,7 +31,7 @@ const cards = {
   },
   poke: {
     name: "Poke",
-    cost: 2,
+    cost: 1,
     effects: [
       { type: EffectType.DAMAGE, amount: 1 }
     ]
