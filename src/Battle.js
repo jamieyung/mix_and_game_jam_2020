@@ -39,6 +39,8 @@ scene.create = function(input) {
   scene.sound.pauseOnBlur = false
 
   $ = {
+    prefight_intro_ms_left: 3000,
+    prefight_layer: undefined, // initialised below
     player: {
       max_hp: input.player.max_hp,
       hp: input.player.hp,
@@ -133,6 +135,16 @@ scene.create = function(input) {
   $.keys.push(scene.input.keyboard.addKey("SPACE", true))
   $.keys.push(scene.input.keyboard.addKey("ENTER", true))
 
+  $.prefight_layer = scene.add.container(0, 0)
+  const prefight_bg = scene.add.rectangle(400, 300, 400, 300, 0xe0d728).setOrigin(0.5, 0.5)
+  $.prefight_layer.add(prefight_bg)
+
+  const prefight_text = scene.add.bitmapText(400, 300, "monoid", "Type the words\nin the boxes on\nthe left!")
+    .setOrigin(0.5, 0.5)
+    .setFontSize(40)
+    .setCenterAlign()
+  $.prefight_layer.add(prefight_text)
+
   $.music.intro.once("complete", function() {
     $.music.loop.play({ volume: 0.4, loop: true })
   })
@@ -178,11 +190,11 @@ function mkHandCard(args) {
   const anim_container = scene.add.container(0, 0)
   root.add(anim_container)
 
-  const card_bg = scene.add.rectangle(0, 0, 330, 50, 0x839e3e).setOrigin(0, 0)
+  const card_bg = scene.add.rectangle(0, 0, 330, 50, 0x256da8).setOrigin(0, 0)
   anim_container.add(card_bg)
 
   const card_name_text_obj = scene.add.bitmapText(5, 5, "monoid", args.card.name)
-  card_name_text_obj.setTint(0x3a7ea1)
+  card_name_text_obj.setTint(0xe0d728)
   card_name_text_obj.setScale(0.2)
   anim_container.add(card_name_text_obj)
 
@@ -252,6 +264,42 @@ function remakeCardCharObjsBasedOnRemaining(card) {
 }
 
 scene.update = function(_, dt) {
+  if ($.prefight_intro_ms_left > 0) {
+    $.prefight_intro_ms_left -= dt
+    return
+  } else if (!!$.prefight_layer) {
+    $.prefight_layer.removeAll(true)
+    $.prefight_layer = null
+  }
+
+  if ($.battle_ended) {
+    if ($.postfight_intro_ms_left > 0) {
+      $.postfight_intro_ms_left -= dt
+      return
+    } else {
+      cleanup()
+      if ($.battle_lost) {
+        scene.scene.start("Init")
+      } else {
+        const floor = JSON.parse(JSON.stringify($.floor))
+        floor.nodes[$.playerNodeId].contents = { type: NodeContentsType.NONE }
+        floor.playerStartNodeId = $.playerNodeId
+        scene.scene.start("Overworld", {
+          floor: floor,
+          player: {
+            max_hp: $.player.max_hp,
+            hp: $.player.hp,
+            deck: $.player.deck,
+            gold: $.player.gold,
+            ult: $.player.ult,
+            inventory: $.player.inventory,
+          },
+          difficulty: $.difficulty,
+        })
+      }
+    }
+  }
+
   // Handle keyup events
   for (const [keyCode, key] of Object.entries($.down_keys)) {
     if (key.isDown) continue
@@ -365,26 +413,23 @@ scene.update = function(_, dt) {
 
   // Check for end of battle
   if ($.player.hp <= 0) {
-    cleanup()
-    scene.scene.start("Init")
+    endBattle(true)
   } else if ($.enemy.hp <= 0) {
-    const floor = JSON.parse(JSON.stringify($.floor))
-    floor.nodes[$.playerNodeId].contents = { type: NodeContentsType.NONE }
-    floor.playerStartNodeId = $.playerNodeId
-    cleanup()
-    scene.scene.start("Overworld", {
-      floor: floor,
-      player: {
-        max_hp: $.player.max_hp,
-        hp: $.player.hp,
-        deck: $.player.deck,
-        gold: $.player.gold,
-        ult: $.player.ult,
-        inventory: $.player.inventory,
-      },
-      difficulty: $.difficulty,
-    })
+    endBattle(false)
   }
+}
+
+function endBattle(lost) {
+  $.battle_ended = true
+  $.battle_lost = lost
+  $.postfight_intro_ms_left = 3000
+
+  scene.add.rectangle(400, 300, 400, 300, 0xe0d728).setOrigin(0.5, 0.5)
+
+  scene.add.bitmapText(400, 300, "monoid", "You " + (lost ? "lost :(" : "won!"))
+    .setOrigin(0.5, 0.5)
+    .setFontSize(40)
+    .setCenterAlign()
 }
 
 function enterDeletingCharState(target) {

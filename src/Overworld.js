@@ -101,6 +101,10 @@ scene.create = function(input) {
 
   refreshTargetNodeKeys()
 
+  const hint = scene.add.bitmapText(400, 580, "monoid", "Type to move").setOrigin(0.5)
+  hint.setTint(0xe0d728)
+  hint.setFontSize(20)
+
   $.music.play({ volume: 0.4, loop: true })
 }
 
@@ -160,6 +164,7 @@ function refreshTargetNodeKeys() {
     const node = $.floor.nodes[nodeId]
     const text_obj = scene.add.bitmapText(node.x, node.y + 65, "monoid", c)
     text_obj.setFontSize(20).setOrigin(0.5, 0.5)
+    text_obj.setTint(0xe0d728)
     $.target_node_keys_layer.add(text_obj)
     $.target_node_keys.push({
       key_listener: key_listener,

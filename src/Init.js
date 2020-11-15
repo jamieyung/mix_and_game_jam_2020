@@ -50,14 +50,18 @@ scene.preload = function() {
 scene.create = function(input) {
   console.log("Init", input)
   $ = {}
-  $.text_obj = scene.add.bitmapText(40, 40, "monoid", "Press ENTER to start")
+
+  $.title_obj = scene.add.bitmapText(400, 150, "monoid", "Type Dungeon").setOrigin(0.5)
+  $.title_obj.setTint(0xe0d728)
+  $.title_obj.setFontSize(96)
+
+  $.text_obj = scene.add.bitmapText(400, 400, "monoid", "Press ENTER to start").setOrigin(0.5)
   $.text_obj.setFontSize(40)
   $.enter = scene.input.keyboard.addKey("ENTER", true)
 }
 
 scene.update = function() {
-  // if ($.enter.isDown) {
-  if (true) {
+  if ($.enter.isDown) {
     scene.scene.start("Overworld", {
       floor: floors[0],
       player: {
