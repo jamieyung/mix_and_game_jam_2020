@@ -1,4 +1,3 @@
-import { cards } from "./Card.js"
 import { enemies } from "./Enemy.js"
 import { NodeContentsType, floors } from "./Floor.js"
 
@@ -7,17 +6,24 @@ const scene = new Phaser.Scene({ key: "Overworld" })
 let $ = {}
 
 // input.floor
+// input.player.max_hp
+// input.player.hp
+// input.player.deck - an array of Cards
+// input.player.gold TODO
+// input.player.ult TODO
+// input.player.inventory TODO
 scene.create = function(input) {
   console.log("Overworld", input)
   const floor = JSON.parse(JSON.stringify(input.floor)) // deep copy
   $ = {
     floor: floor,
+    player: input.player,
     node_objects: {},
     edge_objects: [],
     adj: {}, // adjacency list, initialised below
     nodes_and_edges_layer: scene.add.container(0, 0),
     node_contents_layer: scene.add.container(0, 0),
-    player: {
+    player_overworld_info: {
       nodeId: floor.playerStartNodeId,
       obj: null // initialised below
     },
@@ -49,9 +55,9 @@ scene.create = function(input) {
     circle.on("pointerup", function() {
       const path = bfs(0, i)
       if (path) {
-        $.player.nodeId = i
-        $.player.obj.x = node.x
-        $.player.obj.y = node.y
+        $.player_overworld_info.nodeId = i
+        $.player_overworld_info.obj.x = node.x
+        $.player_overworld_info.obj.y = node.y
         handlePlayerArrivedAtNode(node)
       }
     })
@@ -78,7 +84,7 @@ scene.create = function(input) {
 
   // Render player
   const playerStartNode = floor.nodes[floor.playerStartNodeId]
-  $.player.obj = scene.add.text(playerStartNode.x, playerStartNode.y, "P")
+  $.player_overworld_info.obj = scene.add.text(playerStartNode.x, playerStartNode.y, "P")
 }
 
 function handlePlayerArrivedAtNode(node) {
@@ -86,27 +92,16 @@ function handlePlayerArrivedAtNode(node) {
     // do nothing
   } else if (node.contents.type === NodeContentsType.ENEMY) {
     scene.scene.start("Battle", {
-      player: {
-        max_hp: 20,
-        hp: 15,
-        deck: [
-          cards.hit,
-          cards.hit,
-          cards.hit,
-          cards.heal
-        ],
-        gold: 0, // TODO
-        ult: {}, // TODO
-        inventory: {} // TODO
-      },
+      player: $.player,
       enemy: enemies[node.contents.enemyId],
       floor: JSON.parse(JSON.stringify($.floor)), // deep copy
-      playerNodeId: $.player.nodeId
+      playerNodeId: $.player_overworld_info.nodeId
     })
   } else if (node.contents.type === NodeContentsType.EXIT) {
     var floor = floors[node.contents.targetFloorIdx]
     scene.scene.start("Overworld", {
       floor: JSON.parse(JSON.stringify(floor)), // deep copy
+      player: $.player
     })
   } else {
     console.log("Overworld handlePlayerArrivedAtNode function: Unhandled NodeContentsType case:", node.contents.type)

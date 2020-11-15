@@ -1,3 +1,4 @@
+import { cards } from "./Card.js"
 import { floors } from "./Floor.js"
 
 const scene = new Phaser.Scene({ key: "Init" })
@@ -16,7 +17,20 @@ scene.create = function(input) {
 scene.update = function() {
   if ($.enter.isDown) {
     scene.scene.start("Overworld", {
-      floor: floors[0]
+      floor: floors[0],
+      player: {
+        max_hp: 20,
+        hp: 15,
+        deck: [
+          cards.hit,
+          cards.hit,
+          cards.hit,
+          cards.heal
+        ],
+        gold: 0, // TODO
+        ult: {}, // TODO
+        inventory: {} // TODO
+      }
     })
   }
 }

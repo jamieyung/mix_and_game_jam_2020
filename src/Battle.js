@@ -222,7 +222,15 @@ scene.update = function(time, dt) {
     floor.nodes[$.playerNodeId].contents = { type: NodeContentsType.NONE }
     floor.playerStartNodeId = $.playerNodeId
     scene.scene.start("Overworld", {
-      floor: floor
+      floor: floor,
+      player: {
+        max_hp: $.player.max_hp,
+        hp: $.player.hp,
+        deck: $.player.deck,
+        gold: $.player.gold,
+        ult: $.player.ult,
+        inventory: $.player.inventory,
+      }
     })
   }
 }
