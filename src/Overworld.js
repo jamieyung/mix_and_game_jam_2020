@@ -9,10 +9,10 @@ let $ = {}
 scene.create = function(input) {
   console.log("Overworld", input)
   $ = {
-    floor: floors[input.floorId],
+    floor: JSON.parse(JSON.stringify(floors[input.floorId])), // deep copy
     node_objects: {},
     edge_objects: [],
-    adjacency_map: {}, // initialised below
+    adj: {}, // adjacency list, initialised below
     nodes_and_edges_layer: scene.add.container(0, 0),
     enemies_layer: scene.add.container(0, 0),
     player: {
@@ -21,8 +21,6 @@ scene.create = function(input) {
     },
     enemies: []
   }
-
-  $.enter = scene.input.keyboard.addKey("ENTER", true)
 
   // Render edges
   for (let edge of $.floor.edges) {
@@ -34,11 +32,11 @@ scene.create = function(input) {
     $.nodes_and_edges_layer.add(line)
     $.edge_objects.push(line)
 
-    // populate adjacency_map
-    if (!$.adjacency_map[uid]) $.adjacency_map[uid] = []
-    if (!$.adjacency_map[vid]) $.adjacency_map[vid] = []
-    if ($.adjacency_map[uid].indexOf(vid) === -1) $.adjacency_map[uid].push(vid)
-    if ($.adjacency_map[vid].indexOf(uid) === -1) $.adjacency_map[vid].push(uid)
+    // populate adj
+    if (!$.adj[uid]) $.adj[uid] = []
+    if (!$.adj[vid]) $.adj[vid] = []
+    if ($.adj[uid].indexOf(vid) === -1) $.adj[uid].push(vid)
+    if ($.adj[vid].indexOf(uid) === -1) $.adj[vid].push(uid)
   }
 
   // Render nodes and node contents
@@ -46,8 +44,31 @@ scene.create = function(input) {
     const node = $.floor.nodes[i]
     const circle = scene.add.circle(node.x, node.y, 30, 0x805920)
     circle.setInteractive()
-    circle.on("pointerdown", function() {
-      console.log(node)
+    circle.on("pointerup", function() {
+      const path = bfs(0, i)
+      console.log(path)
+      if (path) {
+        $.player.nodeId = i
+        $.player.obj.x = node.x
+        $.player.obj.y = node.y
+
+        if (node.contents.type === NodeContentsType.ENEMY) {
+          scene.scene.start("Battle", {
+            player: {
+              max_hp: 20,
+              hp: 15,
+              deck: [
+                cards.hit,
+                cards.heal
+              ],
+              gold: 0, // TODO
+              ult: {}, // TODO
+              inventory: {} // TODO
+            },
+            enemy: enemies[node.contents.enemyId]
+          })
+        }
+      }
     })
     $.nodes_and_edges_layer.add(circle)
     $.node_objects[i] = circle
@@ -67,23 +88,42 @@ scene.create = function(input) {
   }
 }
 
-scene.update = function() {
-  if ($.enter.isDown) {
-    scene.scene.start("Battle", {
-      player: {
-        max_hp: 20,
-        hp: 15,
-        deck: [
-          cards.hit,
-          cards.heal
-        ],
-        gold: 0, // TODO
-        ult: {}, // TODO
-        inventory: {} // TODO
-      },
-      enemy: enemies.enemy1
-    })
+// u and v are node ids.
+// null as a return value means no valid path was found.
+function bfs(u, v) {
+  const prev = {}
+  const visited = {}
+  const queue = []
+  queue.push(u)
+
+  while (queue.length > 0) {
+    const cur = queue.shift()
+    visited[cur] = true
+
+    if (cur === v) {
+      const path = []
+      let tmp = v
+      while (tmp !== u) {
+        path.unshift(tmp)
+        tmp = prev[tmp]
+      }
+      return path
+    }
+
+    // disallow progressing past nodes with enemies on them (must defeat the enemy first)
+    if ($.floor.nodes[cur].contents.type === NodeContentsType.ENEMY) continue
+
+    for (let child of $.adj[cur]) {
+      if (visited[child]) continue
+      prev[child] = cur
+      queue.push(child)
+    }
   }
+
+  return null
+}
+
+scene.update = function() {
 }
 
 export default scene
