@@ -12,12 +12,15 @@ let $ = {}
 // input.player.gold TODO
 // input.player.ult TODO
 // input.player.inventory TODO
+// input.difficulty.word_length.avg
+// input.difficulty.word_length.std
 scene.create = function(input) {
   console.log("Overworld", input)
   const floor = JSON.parse(JSON.stringify(input.floor)) // deep copy
   $ = {
     floor: floor,
     player: input.player,
+    difficulty: input.difficulty,
     node_objects: {},
     edge_objects: [],
     adj: {}, // adjacency list, initialised below
@@ -110,13 +113,15 @@ function handlePlayerArrivedAtNode(node) {
       player: $.player,
       enemy: enemies[node.contents.enemyId],
       floor: JSON.parse(JSON.stringify($.floor)), // deep copy
-      playerNodeId: $.player_overworld_info.nodeId
+      playerNodeId: $.player_overworld_info.nodeId,
+      difficulty: $.difficulty,
     })
   } else if (node.contents.type === NodeContentsType.EXIT) {
     const floor = floors[node.contents.targetFloorIdx]
     scene.scene.start("Overworld", {
       floor: JSON.parse(JSON.stringify(floor)), // deep copy
-      player: $.player
+      player: $.player,
+      difficulty: $.difficulty,
     })
   } else {
     console.log("Overworld handlePlayerArrivedAtNode function: Unhandled NodeContentsType case:", node.contents.type)

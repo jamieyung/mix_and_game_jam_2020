@@ -12,7 +12,7 @@ const cards = {
     name: "Hit",
     cost: 1,
     effects: [
-      { type: EffectType.DAMAGE, amount: 1 }
+      { type: EffectType.DAMAGE, amount: 5 }
     ]
   },
   heal: {

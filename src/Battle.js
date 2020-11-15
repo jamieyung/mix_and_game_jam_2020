@@ -1,6 +1,7 @@
 import { EffectType } from "./Card.js"
 import { NodeContentsType } from "./Floor.js"
 import { StatusEffectType, nameFromType as SEnameFromType } from "./StatusEffect.js"
+import { getRandomWord } from "./Words.js"
 
 const scene = new Phaser.Scene({ key: "Battle" })
 
@@ -26,6 +27,8 @@ let $ = {}
 // input.enemy.n_characters_between_mistakes.std
 // input.floor
 // input.playerNodeId
+// input.difficulty.word_length.avg
+// input.difficulty.word_length.std
 
 scene.create = function(input) {
   console.log("Battle", input)
@@ -75,11 +78,13 @@ scene.create = function(input) {
     audio: {
       heal: scene.sound.add("heal"),
       light_attack: scene.sound.add("light_attack_01"),
+      heavy_attack: scene.sound.add("heavy_attack_01"),
     },
     keys: [],
     down_keys: {},
     floor: input.floor,
-    playerNodeId: input.playerNodeId
+    playerNodeId: input.playerNodeId,
+    difficulty: input.difficulty
   }
 
   $.player.status_effects_text_obj = scene.add.text(100, 60, "").setOrigin(0, 0.5)
@@ -134,14 +139,12 @@ function initHand(target, y) {
   }
 }
 
-const words = ["Adult","Aeroplane","Air","Airforce","Airport","Album","Alphabet","Apple","Arm","Army","Baby","Backpack","Balloon","Banana","Bank","Barbecue","Bathroom","Bathtub","Bed","Bee","Bird","Bomb","Book","Boss","Bottle","Bowl","Box","Boy","Brain","Bridge","Butterfly","Button","Cappuccino","Car","Carpet","Carrot","Cave","Chair","Chess","Chief","Child","Chisel","Chocolates","Church","Church","Circle","Circus","Circus","Clock","Clown","Coffee","Comet","Compact","Compass","Computer","Crystal","Cup","Cycle","Database","Desk","Diamond","Dress","Drill","Drink","Drum","Dung","Ears","Earth","Egg","Electricity","Elephant","Eraser","Explosive","Eyes","Family","Fan","Feather","Festival","Film","Finger","Fire","Floodlight","Flower","Foot","Fork","Freeway","Fruit","Fungus","Game","Garden","Gas","Gate","Gemstone","Girl","Gloves","God","Grapes","Guitar","Hammer","Hat","Hieroglyph","Highway","Horoscope","Horse","Hose","Ice","Insect","Jet","Junk","Kaleidoscope","Kitchen","Knife","Leather","Leg","Library","Liquid","Magnet","Man","Map","Maze","Meat","Meteor","Microscope","Milk","Milkshake","Mist","Money","Monster","Mosquito","Mouth","Nail","Navy","Necklace","Needle","Onion","PaintBrush","Pants","Parachute","Passport","Pebble","Pendulum","Pepper","Perfume","Pillow","Plane","Planet","Pocket","Post","Potato","Printer","Prison","Pyramid","Radar","Rainbow","Record","Restaurant","Rifle","Ring","Robot","Rock","Rocket","Roof","Room","Rope","Saddle","Salt","Sandpaper","Sandwich","Satellite","School","Sex","Ship","Shoes","Shop","Shower","Signature","Skeleton","Snail","Software","Solid","Space","Spectrum","Sphere","Spice","Spiral","Spoon","Sports","Spot","Square","Staircase","Star","Stomach","Sun","Sunglasses","Surveyor","Swimming","Sword","Table","Tapestry","Teeth","Telescope","Television","Tennis","Thermometer","Tiger","Toilet","Tongue","Torch","Torpedo","Train","Treadmill","Triangle","Tunnel","Typewriter","Umbrella","Vacuum","Vampire","Videotape","Vulture","Water","Weapon","Web","Wheelchair","Window","Woman","Worm"]
-
 // args.forbidden_initial_characters - array of characters (case-insensitive)
 // args.card - the card from the deck
 function mkHandCard(args) {
   let orig_text
   for (let i = 0; i < 50; i++) {
-    orig_text = Phaser.Math.RND.pick(words)
+    orig_text = getRandomWord($.difficulty.word_length.avg, $.difficulty.word_length.std)
     let conflict_found = false
     const initial_character = orig_text[0].toUpperCase()
     for (let c of args.forbidden_initial_characters) {
@@ -155,7 +158,7 @@ function mkHandCard(args) {
 
   // add the rest of the words
   for (let i = 0; i < args.card.cost - 1; i++) {
-    orig_text += " " + Phaser.Math.RND.pick(words)
+    orig_text += " " + getRandomWord($.difficulty.word_length.avg, $.difficulty.word_length.std)
   }
 
   const root = scene.add.container(0, 0)
@@ -291,7 +294,8 @@ scene.update = function(_, dt) {
         gold: $.player.gold,
         ult: $.player.ult,
         inventory: $.player.inventory,
-      }
+      },
+      difficulty: $.difficulty,
     })
   }
 }
@@ -463,7 +467,9 @@ function executeCardEffect(asPlayer, card) {
   if (healAmount > 0) {
     $.audio.heal.play()
   }
-  if (damageAmount > 0) {
+  if (damageAmount > 2) {
+    $.audio.heavy_attack.play()
+  } else if (damageAmount > 0) {
     $.audio.light_attack.play()
   }
 
