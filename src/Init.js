@@ -1,9 +1,9 @@
-var scene = new Phaser.Scene({ key: "Init" })
+const scene = new Phaser.Scene({ key: "Init" })
 
-var $ = {}
+let $ = {}
 
 // input.floor
-scene.init = function(input) {
+scene.create = function(input) {
   console.log("Init", input)
   $ = {}
   $.text_obj = scene.add.text(40, 40, "Press ENTER to start")

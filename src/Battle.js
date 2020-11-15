@@ -1,8 +1,8 @@
 import { EffectType, TargetType } from "./Card.js"
 
-var scene = new Phaser.Scene({ key: "Battle" })
+const scene = new Phaser.Scene({ key: "Battle" })
 
-var $ = {}
+let $ = {}
 
 // Input
 //
@@ -23,7 +23,7 @@ var $ = {}
 // input.enemy.n_characters_between_mistakes.avg
 // input.enemy.n_characters_between_mistakes.std
 
-scene.init = function(input) {
+scene.create = function(input) {
   console.log("Battle", input)
 
   $ = {
@@ -76,9 +76,9 @@ scene.init = function(input) {
 }
 
 function initHand(target, y) {
-  var forbidden_initial_characters = []
+  const forbidden_initial_characters = []
   for (let i = 0; i < 6; i++) {
-    var handCard = mkHandCard({
+    const handCard = mkHandCard({
       forbidden_initial_characters: forbidden_initial_characters,
       card: Phaser.Math.RND.pick(target.deck),
       scene: scene
@@ -90,17 +90,17 @@ function initHand(target, y) {
   }
 }
 
-var words = ["Adult","Aeroplane","Air","Airforce","Airport","Album","Alphabet","Apple","Arm","Army","Baby","Backpack","Balloon","Banana","Bank","Barbecue","Bathroom","Bathtub","Bed","Bee","Bird","Bomb","Book","Boss","Bottle","Bowl","Box","Boy","Brain","Bridge","Butterfly","Button","Cappuccino","Car","Carpet","Carrot","Cave","Chair","Chess","Chief","Child","Chisel","Chocolates","Church","Church","Circle","Circus","Circus","Clock","Clown","Coffee","Comet","Compact","Compass","Computer","Crystal","Cup","Cycle","Database","Desk","Diamond","Dress","Drill","Drink","Drum","Dung","Ears","Earth","Egg","Electricity","Elephant","Eraser","Explosive","Eyes","Family","Fan","Feather","Festival","Film","Finger","Fire","Floodlight","Flower","Foot","Fork","Freeway","Fruit","Fungus","Game","Garden","Gas","Gate","Gemstone","Girl","Gloves","God","Grapes","Guitar","Hammer","Hat","Hieroglyph","Highway","Horoscope","Horse","Hose","Ice","Insect","Jet","Junk","Kaleidoscope","Kitchen","Knife","Leather","Leg","Library","Liquid","Magnet","Man","Map","Maze","Meat","Meteor","Microscope","Milk","Milkshake","Mist","Money","Monster","Mosquito","Mouth","Nail","Navy","Necklace","Needle","Onion","PaintBrush","Pants","Parachute","Passport","Pebble","Pendulum","Pepper","Perfume","Pillow","Plane","Planet","Pocket","Post","Potato","Printer","Prison","Pyramid","Radar","Rainbow","Record","Restaurant","Rifle","Ring","Robot","Rock","Rocket","Roof","Room","Rope","Saddle","Salt","Sandpaper","Sandwich","Satellite","School","Sex","Ship","Shoes","Shop","Shower","Signature","Skeleton","Snail","Software","Solid","Space","Spectrum","Sphere","Spice","Spiral","Spoon","Sports","Spot","Square","Staircase","Star","Stomach","Sun","Sunglasses","Surveyor","Swimming","Sword","Table","Tapestry","Teeth","Telescope","Television","Tennis","Thermometer","Tiger","Toilet","Tongue","Torch","Torpedo","Train","Treadmill","Triangle","Tunnel","Typewriter","Umbrella","Vacuum","Vampire","Videotape","Vulture","Water","Weapon","Web","Wheelchair","Window","Woman","Worm"]
+const words = ["Adult","Aeroplane","Air","Airforce","Airport","Album","Alphabet","Apple","Arm","Army","Baby","Backpack","Balloon","Banana","Bank","Barbecue","Bathroom","Bathtub","Bed","Bee","Bird","Bomb","Book","Boss","Bottle","Bowl","Box","Boy","Brain","Bridge","Butterfly","Button","Cappuccino","Car","Carpet","Carrot","Cave","Chair","Chess","Chief","Child","Chisel","Chocolates","Church","Church","Circle","Circus","Circus","Clock","Clown","Coffee","Comet","Compact","Compass","Computer","Crystal","Cup","Cycle","Database","Desk","Diamond","Dress","Drill","Drink","Drum","Dung","Ears","Earth","Egg","Electricity","Elephant","Eraser","Explosive","Eyes","Family","Fan","Feather","Festival","Film","Finger","Fire","Floodlight","Flower","Foot","Fork","Freeway","Fruit","Fungus","Game","Garden","Gas","Gate","Gemstone","Girl","Gloves","God","Grapes","Guitar","Hammer","Hat","Hieroglyph","Highway","Horoscope","Horse","Hose","Ice","Insect","Jet","Junk","Kaleidoscope","Kitchen","Knife","Leather","Leg","Library","Liquid","Magnet","Man","Map","Maze","Meat","Meteor","Microscope","Milk","Milkshake","Mist","Money","Monster","Mosquito","Mouth","Nail","Navy","Necklace","Needle","Onion","PaintBrush","Pants","Parachute","Passport","Pebble","Pendulum","Pepper","Perfume","Pillow","Plane","Planet","Pocket","Post","Potato","Printer","Prison","Pyramid","Radar","Rainbow","Record","Restaurant","Rifle","Ring","Robot","Rock","Rocket","Roof","Room","Rope","Saddle","Salt","Sandpaper","Sandwich","Satellite","School","Sex","Ship","Shoes","Shop","Shower","Signature","Skeleton","Snail","Software","Solid","Space","Spectrum","Sphere","Spice","Spiral","Spoon","Sports","Spot","Square","Staircase","Star","Stomach","Sun","Sunglasses","Surveyor","Swimming","Sword","Table","Tapestry","Teeth","Telescope","Television","Tennis","Thermometer","Tiger","Toilet","Tongue","Torch","Torpedo","Train","Treadmill","Triangle","Tunnel","Typewriter","Umbrella","Vacuum","Vampire","Videotape","Vulture","Water","Weapon","Web","Wheelchair","Window","Woman","Worm"]
 
 // args.forbidden_initial_characters - array of characters (case-insensitive)
 // args.card - the card from the deck
 function mkHandCard(args) {
-  var orig_text
+  let orig_text
   for (let j = 0; j < 50; j++) {
     orig_text = Phaser.Math.RND.pick(words)
-    var conflict_found = false
-    var initial_character = orig_text[0].toUpperCase()
-    for (var c of args.forbidden_initial_characters) {
+    let conflict_found = false
+    const initial_character = orig_text[0].toUpperCase()
+    for (let c of args.forbidden_initial_characters) {
       if (c.toUpperCase() === initial_character) {
         conflict_found = true
         break
@@ -108,13 +108,13 @@ function mkHandCard(args) {
     }
     if (!conflict_found) break
   }
-  var root = scene.add.container(0, 0)
+  const root = scene.add.container(0, 0)
 
-  var card_name_text_obj = scene.add.text(0, 0, args.card.name)
+  const card_name_text_obj = scene.add.text(0, 0, args.card.name)
   card_name_text_obj.setFontSize(20)
   root.add(card_name_text_obj)
 
-  var text_obj = scene.add.text(0, 15, orig_text)
+  const text_obj = scene.add.text(0, 15, orig_text)
   text_obj.setFontSize(40)
   root.add(text_obj)
 
@@ -140,14 +140,14 @@ scene.update = function(time, dt) {
   }
 
   // Handle keydown events
-  for (var key of $.keys) {
-    var keyCode = key.keyCode
+  for (let key of $.keys) {
+    const keyCode = key.keyCode
     if (keyCode in $.down_keys) continue
     if (!key.isDown) continue
     $.down_keys[keyCode] = key
 
     if ($.player.currentHandCard) {
-      var nextKeyCode = $.player.currentHandCard.remaining[0].toUpperCase().charCodeAt(0)
+      const nextKeyCode = $.player.currentHandCard.remaining[0].toUpperCase().charCodeAt(0)
       if (nextKeyCode === keyCode) {
         $.player.currentHandCard.remaining = $.player.currentHandCard.remaining.substring(1)
         $.player.currentHandCard.text_obj.text = $.player.currentHandCard.remaining
@@ -163,9 +163,9 @@ scene.update = function(time, dt) {
       }
     } else {
       // no current handCard, try find one
-      for (var handCard of $.player.hand) {
+      for (let handCard of $.player.hand) {
         if (handCard.remaining.length === 0) continue
-        var nextKeyCode = handCard.remaining[0].toUpperCase().charCodeAt(0)
+        const nextKeyCode = handCard.remaining[0].toUpperCase().charCodeAt(0)
         if (nextKeyCode !== keyCode) continue
         handCard.remaining = handCard.remaining.substring(1)
         handCard.text_obj.text = handCard.remaining
@@ -218,17 +218,17 @@ scene.update = function(time, dt) {
 }
 
 function recalcEnemyCharactersUntilNextMistake() {
-  var n = $.enemy.n_characters_between_mistakes.avg + $.enemy.n_characters_between_mistakes.std * Phaser.Math.RND.normal()
+  const n = $.enemy.n_characters_between_mistakes.avg + $.enemy.n_characters_between_mistakes.std * Phaser.Math.RND.normal()
   $.enemy.characters_until_next_mistake = Math.max(Math.round(n), 1)
 }
 
 function executeCardEffect(asPlayer, card) {
-  var self = asPlayer ? $.player : $.enemy
-  var opponent = asPlayer ? $.enemy : $.player
-  var target = card.target === TargetType.SELF ? self : opponent
-  var selfText = asPlayer ? "Player" : "Enemy"
-  var opponentText = asPlayer ? "Enemy" : "Player"
-  var targetText = card.target === TargetType.SELF ? selfText : opponentText
+  const self = asPlayer ? $.player : $.enemy
+  const opponent = asPlayer ? $.enemy : $.player
+  const target = card.target === TargetType.SELF ? self : opponent
+  const selfText = asPlayer ? "Player" : "Enemy"
+  const opponentText = asPlayer ? "Enemy" : "Player"
+  const targetText = card.target === TargetType.SELF ? selfText : opponentText
 
   if (card.effect.type === EffectType.DAMAGE) {
     target.hp = Math.max(0, target.hp - card.effect.amount)
@@ -243,13 +243,13 @@ function redrawCurrentHandCard(target) {
   if (!target.currentHandCard) return
   target.currentHandCard.destroy()
 
-  var forbidden_initial_characters = []
-  for (var otherHandCard of target.hand) {
+  const forbidden_initial_characters = []
+  for (let otherHandCard of target.hand) {
     if (otherHandCard === target.currentHandCard) continue
     forbidden_initial_characters.push(otherHandCard.orig_text[0])
   }
 
-  var newHandCard = mkHandCard({
+  const newHandCard = mkHandCard({
     forbidden_initial_characters: forbidden_initial_characters,
     card: Phaser.Math.RND.pick(target.deck),
     scene: scene
