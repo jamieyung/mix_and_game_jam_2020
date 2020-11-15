@@ -9,13 +9,21 @@ scene.preload = function() {
   scene.load.audio("battle_intro", "./audio/Battle_Theme_Intro_01.ogg")
   scene.load.audio("battle_loop", "./audio/Battle_Theme_Loop_01.ogg")
 
-  scene.load.audio("light_attack_01", "./audio/Light_Attack_01.mp3")
-  scene.load.audio("heavy_attack_01", "./audio/Heavy_Attack_01.mp3")
+  scene.load.audio("light_attack", "./audio/Light_Attack_01.mp3")
+  scene.load.audio("heavy_attack", "./audio/Heavy_Attack_01.mp3")
   scene.load.audio("shield_hit", "./audio/Shield_Hit_02.mp3")
   scene.load.audio("heal", "./audio/Heal_SFX.mp3")
   scene.load.audio("mistake", "./audio/Mistake_sfx.mp3")
 
   scene.load.bitmapFont("monoid", "./font/monoid_0.png", "./font/monoid.fnt")
+
+  scene.load.image("bookworm", "./img/bookworm.png")
+  scene.load.image("bull", "./img/bull.png")
+  scene.load.image("cobra", "./img/cobra.png")
+  scene.load.image("hero_back", "./img/hero_back.png")
+  scene.load.image("hero_front", "./img/hero_front.png")
+  scene.load.image("hippo", "./img/hippo.png")
+  scene.load.image("troll", "./img/troll.png")
 }
 
 // input.floor
@@ -28,7 +36,8 @@ scene.create = function(input) {
 }
 
 scene.update = function() {
-  if ($.enter.isDown) {
+  // if ($.enter.isDown) {
+  if (true) {
     scene.scene.start("Overworld", {
       floor: floors[0],
       player: {

@@ -672,7 +672,7 @@ function cleanup() {
     key.destroy()
   }
 
-  const xs = [$.player, $.opponent]
+  const xs = [$.player, $.enemy]
   for (let target of xs) {
     target.status_effects_text_obj.destroy()
     target.name_text_obj.destroy()

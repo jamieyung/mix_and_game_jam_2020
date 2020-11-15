@@ -59,7 +59,8 @@ scene.create = function(input) {
     $.nodeid_to_char[nodeId] = availableKeys[0]
     availableKeys = availableKeys.substring(1)
     const node = $.floor.nodes[nodeId]
-    const circle = scene.add.circle(node.x, node.y, 30, 0x805920)
+    const circle = scene.add.circle(node.x, node.y, 60, 0x805920)
+    circle.setScale(1, 0.3)
     circle.setInteractive()
     circle.on("pointerup", function() {
       tryTravelToNode(nodeId)
@@ -70,27 +71,28 @@ scene.create = function(input) {
     if (node.contents.type === NodeContentsType.NONE) {
       // do nothing
     } else if (node.contents.type === NodeContentsType.ENEMY) {
-      const enemy = enemies[node.contents.enemyId]
-      const enemy_obj = scene.add.bitmapText(node.x, node.y, "monoid", enemy.name)
-      enemy_obj.setScale(0.3)
-      $.node_contents_layer.add(enemy_obj)
-      $.enemies.push({
-        enemy: enemy,
-        obj: enemy_obj
-      })
-    } else if (node.contents.type === NodeContentsType.EXIT) {
+      const enemy_sprite_obj = scene.add.image(node.x, node.y + 5, node.contents.enemyId)
+      enemy_sprite_obj.setOrigin(0.5, 0.95)
+      enemy_sprite_obj.setScale(0.06)
+      $.node_contents_layer.add(enemy_sprite_obj)
+    }
+
+    else if (node.contents.type === NodeContentsType.EXIT) {
       const exit_obj = scene.add.bitmapText(node.x, node.y, "monoid", "E")
-      exit_obj.setScale(0.3)
+      exit_obj.setFontSize(20).setOrigin(0.5, 0.5)
       $.node_contents_layer.add(exit_obj)
-    } else {
+    }
+
+    else {
       console.log("Overworld create function: Unhandled NodeContentsType case:", node.contents.type)
     }
   }
 
   // Render player
   const playerStartNode = floor.nodes[floor.playerStartNodeId]
-  $.player_overworld_info.obj = scene.add.bitmapText(playerStartNode.x, playerStartNode.y, "monoid", "P")
-  $.player_overworld_info.obj.setScale(0.3)
+  $.player_overworld_info.obj = scene.add.image(playerStartNode.x, playerStartNode.y + 5, "hero_front")
+  $.player_overworld_info.obj.setOrigin(0.47, 0.95)
+  $.player_overworld_info.obj.setScale(0.08)
 
   refreshTargetNodeKeys()
 }
@@ -150,7 +152,7 @@ function refreshTargetNodeKeys() {
     })
     const node = $.floor.nodes[nodeId]
     const text_obj = scene.add.bitmapText(node.x, node.y + 30, "monoid", c) // TODO hardcoded
-    text_obj.setScale(0.3)
+    text_obj.setFontSize(20).setOrigin(0.5, 0.5)
     $.target_node_keys_layer.add(text_obj)
     $.target_node_keys.push({
       key_listener: key_listener,
