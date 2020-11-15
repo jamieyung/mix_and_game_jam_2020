@@ -73,6 +73,7 @@ scene.create = function(input) {
       loop: scene.sound.add("battle_loop", { volume: 0.4, loop: true }),
     },
     audio: {
+      heal: scene.sound.add("heal"),
       light_attack: scene.sound.add("light_attack_01"),
     },
     keys: [],
@@ -204,11 +205,18 @@ scene.update = function(_, dt) {
           executeCardEffect(true, $.player.currentHandCard.card)
           redrawCurrentHandCard($.player)
         }
-      } else { // mistake, reset the word
-        $.player.currentHandCard.remaining = $.player.currentHandCard.orig_text
-        $.player.currentHandCard.text_obj.text = $.player.currentHandCard.remaining
-        $.player.currentHandCard.text_obj.setColor("#ffffff")
-        $.player.currentHandCard = undefined
+      } else { // mistake
+        if ($.player.status_effects[StatusEffectType.GLASS_CANNON]) { // destroy card and take damage
+          redrawCurrentHandCard($.player)
+          $.player.hp = Math.max(0, $.player.hp - 2)
+          $.audio.light_attack.play()
+          redrawHealthBar($.player)
+        } else { // reset the word
+          $.player.currentHandCard.remaining = $.player.currentHandCard.orig_text
+          $.player.currentHandCard.text_obj.text = $.player.currentHandCard.remaining
+          $.player.currentHandCard.text_obj.setColor("#ffffff")
+          $.player.currentHandCard = undefined
+        }
       }
     } else {
       // no current handCard, try find one
@@ -319,6 +327,11 @@ function tickStatusEffects(dt) {
         status_effect.remaining_secs -= dt/1000
         if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
       }
+
+      else if (t === StatusEffectType.GLASS_CANNON) {
+        status_effect.remaining_secs -= dt/1000
+        if (status_effect.remaining_secs <= 0) delete target.status_effects[type]
+      }
     }
 
     // compile render string
@@ -331,6 +344,7 @@ function tickStatusEffects(dt) {
       else if (t === StatusEffectType.BERSERK) str += name + " " + status_effect.remaining_secs.toFixed(0)
       else if (t === StatusEffectType.POISON) str += name + " " + status_effect.remaining_secs.toFixed(0)
       else if (t === StatusEffectType.SLOW) str += name + " " + status_effect.remaining_secs.toFixed(0)
+      else if (t === StatusEffectType.GLASS_CANNON) str += name + " " + status_effect.remaining_secs.toFixed(0)
     }
 
     target.status_effects_text_obj.text = str
@@ -346,17 +360,19 @@ function executeCardEffect(asPlayer, card) {
   const self = asPlayer ? $.player : $.enemy
   const opponent = asPlayer ? $.enemy : $.player
 
+  // accounting
+  let healAmount = 0
   let damageAmount = 0
-  let berserkDamageWasDone = false
+  let damageMultiplier = 1
+  let wasBerserk = !!self.status_effects[StatusEffectType.BERSERK]
+  let wasGlassCannon = !!self.status_effects[StatusEffectType.GLASS_CANNON]
+
+  if (wasBerserk) damageMultiplier *= 2
+  if (wasGlassCannon) damageMultiplier *= 2
 
   for (let effect of card.effects) {
     if (effect.type === EffectType.DAMAGE) {
-      let amount = effect.amount
-
-      if (self.status_effects[StatusEffectType.BERSERK]) {
-        amount *= 2
-        berserkDamageWasDone = true
-      }
+      let amount = effect.amount * damageMultiplier
 
       if (opponent.status_effects[StatusEffectType.SHIELD]) {
         const shield_info = opponent.status_effects[StatusEffectType.SHIELD]
@@ -374,15 +390,12 @@ function executeCardEffect(asPlayer, card) {
     else if (effect.type === EffectType.HEAL) {
       self.hp = Math.min(self.max_hp, self.hp + effect.amount)
       redrawHealthBar(self)
+
+      healAmount += effect.amount
     }
 
     else if (effect.type === EffectType.LEECH) {
-      let amount = effect.amount
-
-      if (self.status_effects[StatusEffectType.BERSERK]) {
-        amount *= 2
-        berserkDamageWasDone = true
-      }
+      let amount = effect.amount * damageMultiplier
 
       if (opponent.status_effects[StatusEffectType.SHIELD]) {
         const shield_info = opponent.status_effects[StatusEffectType.SHIELD]
@@ -399,32 +412,39 @@ function executeCardEffect(asPlayer, card) {
       damageAmount += amount
     }
 
-    else if (effect.type === EffectType.SHIELD) {
-      if (!self.status_effects[StatusEffectType.SHIELD]) self.status_effects[StatusEffectType.SHIELD] = { amount: 0 }
-      self.status_effects[StatusEffectType.SHIELD].amount += effect.amount
-    }
-
-    else if (effect.type === EffectType.BERSERK) {
-      if (!self.status_effects[StatusEffectType.BERSERK]) self.status_effects[StatusEffectType.BERSERK] = { remaining_secs: 0 }
-      self.status_effects[StatusEffectType.BERSERK].remaining_secs += effect.duration_secs
-    }
-
-    else if (effect.type === EffectType.POISON) {
-      if (!opponent.status_effects[StatusEffectType.POISON]) opponent.status_effects[StatusEffectType.POISON] = {
-        remaining_secs: 0,
-        ms_between_hits: 1000,
-        ms_until_next_hit: 1000,
+    else if (effect.type === EffectType.APPLY_STATUS_EFFECT) {
+      if (effect.status_effect_type === StatusEffectType.SHIELD) {
+        if (!self.status_effects[StatusEffectType.SHIELD]) self.status_effects[StatusEffectType.SHIELD] = { amount: 0 }
+        self.status_effects[StatusEffectType.SHIELD].amount += effect.amount
       }
-      opponent.status_effects[StatusEffectType.POISON].remaining_secs += effect.duration_secs
-    }
 
-    else if (effect.type === EffectType.SLOW) {
-      if (!opponent.status_effects[StatusEffectType.SLOW]) opponent.status_effects[StatusEffectType.SLOW] = { remaining_secs: 0 }
-      opponent.status_effects[StatusEffectType.SLOW].remaining_secs += effect.duration_secs
+      else if (effect.status_effect_type === StatusEffectType.BERSERK) {
+        if (!self.status_effects[StatusEffectType.BERSERK]) self.status_effects[StatusEffectType.BERSERK] = { remaining_secs: 0 }
+        self.status_effects[StatusEffectType.BERSERK].remaining_secs += effect.duration_secs
+      }
+
+      else if (effect.status_effect_type === StatusEffectType.POISON) {
+        if (!opponent.status_effects[StatusEffectType.POISON]) opponent.status_effects[StatusEffectType.POISON] = {
+          remaining_secs: 0,
+          ms_between_hits: 1000,
+          ms_until_next_hit: 1000,
+        }
+        opponent.status_effects[StatusEffectType.POISON].remaining_secs += effect.duration_secs
+      }
+
+      else if (effect.status_effect_type === StatusEffectType.SLOW) {
+        if (!opponent.status_effects[StatusEffectType.SLOW]) opponent.status_effects[StatusEffectType.SLOW] = { remaining_secs: 0 }
+        opponent.status_effects[StatusEffectType.SLOW].remaining_secs += effect.duration_secs
+      }
+
+      else if (effect.status_effect_type === StatusEffectType.GLASS_CANNON) {
+        if (!self.status_effects[StatusEffectType.GLASS_CANNON]) self.status_effects[StatusEffectType.GLASS_CANNON] = { remaining_secs: 0 }
+        self.status_effects[StatusEffectType.GLASS_CANNON].remaining_secs += effect.duration_secs
+      }
     }
   }
 
-  if (berserkDamageWasDone) {
+  if (wasBerserk && damageAmount > 0) {
     let berserkSelfDamageAmount = damageAmount/2
 
     if (self.status_effects[StatusEffectType.SHIELD]) {
@@ -439,6 +459,9 @@ function executeCardEffect(asPlayer, card) {
   }
 
   // sfx
+  if (healAmount > 0) {
+    $.audio.heal.play()
+  }
   if (damageAmount > 0) {
     $.audio.light_attack.play()
   }

@@ -10,6 +10,7 @@ scene.preload = function() {
   scene.load.audio("battle_loop", "./audio/Battle_Theme_Loop_01.ogg")
 
   scene.load.audio("light_attack_01", "./audio/Light_Attack_01.mp3")
+  scene.load.audio("heal", "./audio/Heal_SFX.mp3")
 }
 
 // input.floor
@@ -29,14 +30,15 @@ scene.update = function() {
         max_hp: 20,
         hp: 15,
         deck: [
-          cards.hit,
           // cards.hit,
+          cards.hit,
           // cards.heal,
-          // cards.leech,
-          // cards.harden,
+          cards.leech,
+          cards.harden,
           // cards.berserk,
           // cards.poison,
-          cards.mud
+          cards.mud,
+          cards.glass_cannon
         ],
         gold: 0, // TODO
         ult: {}, // TODO
