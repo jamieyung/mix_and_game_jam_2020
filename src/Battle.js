@@ -409,6 +409,7 @@ function executeCardEffect(asPlayer, card) {
       self.hp = Math.min(self.max_hp, self.hp + effect.amount)
       redrawHealthBar(self)
 
+      healAmount += amount
       damageAmount += amount
     }
 
