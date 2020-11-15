@@ -75,12 +75,6 @@ scene.create = function(input) {
       intro: scene.sound.add("battle_intro", { volume: 0.4 }),
       loop: scene.sound.add("battle_loop", { volume: 0.4, loop: true }),
     },
-    audio: {
-      heal: scene.sound.add("heal"),
-      light_attack: scene.sound.add("light_attack_01"),
-      heavy_attack: scene.sound.add("heavy_attack_01"),
-      shield_hit: scene.sound.add("shield_hit"),
-    },
     keys: [],
     down_keys: {},
     floor: input.floor,
@@ -88,26 +82,26 @@ scene.create = function(input) {
     difficulty: input.difficulty
   }
 
-  $.player.status_effects_text_obj = scene.add.text(100, 60, "").setOrigin(0, 0.5)
+  $.player.status_effects_text_obj = scene.add.bitmapText(100, 60, "monoid", "").setOrigin(0, 0.5)
   $.player.status_effects_text_obj.setFontSize(20)
   initHand($.player, 100)
-  $.player.name_text_obj = scene.add.text(100, 20, "You").setOrigin(0, 0.5)
+  $.player.name_text_obj = scene.add.bitmapText(100, 20, "monoid", "You").setOrigin(0, 0.5)
   $.player.name_text_obj.setFontSize(20)
   $.player.health_bar_bg = scene.add.rectangle(100, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
   $.player.health_bar_fg = scene.add.rectangle(100, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
   $.player.health_bar_fg.setScale($.player.hp/$.player.max_hp, 1)
-  $.player.health_text_obj = scene.add.text(200, 40, $.player.hp + "/" + $.player.max_hp).setOrigin(0.5, 0.5)
+  $.player.health_text_obj = scene.add.bitmapText(200, 40, "monoid", $.player.hp + "/" + $.player.max_hp).setOrigin(0.5, 0.5)
   $.player.health_text_obj.setFontSize(20)
 
-  $.enemy.status_effects_text_obj = scene.add.text(500, 60, "").setOrigin(0, 0.5)
+  $.enemy.status_effects_text_obj = scene.add.bitmapText(500, 60, "monoid", "").setOrigin(0, 0.5)
   $.enemy.status_effects_text_obj.setFontSize(20)
   recalcEnemyCharactersUntilNextMistake()
   initHand($.enemy, 100)
-  $.enemy.name_text_obj = scene.add.text(500, 20, $.enemy.name).setOrigin(0, 0.5)
+  $.enemy.name_text_obj = scene.add.bitmapText(500, 20, "monoid", $.enemy.name).setOrigin(0, 0.5)
   $.enemy.name_text_obj.setFontSize(20)
   $.enemy.health_bar_bg = scene.add.rectangle(500, 40, 200, 20, 0xe82727).setOrigin(0, 0.5)
   $.enemy.health_bar_fg = scene.add.rectangle(500, 40, 200, 20, 0x1fcf28).setOrigin(0, 0.5)
-  $.enemy.health_text_obj = scene.add.text(600, 40, $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
+  $.enemy.health_text_obj = scene.add.bitmapText(600, 40, "monoid", $.enemy.hp + "/" + $.enemy.hp).setOrigin(0.5, 0.5)
   $.enemy.health_text_obj.setFontSize(20)
 
   tickStatusEffects(0)
@@ -250,7 +244,7 @@ scene.update = function(_, dt) {
           if ($.player.status_effects[StatusEffectType.GLASS_CANNON]) { // destroy card and take damage
             redrawCurrentHandCard($.player)
             $.player.hp = Math.max(0, $.player.hp - 2)
-            $.audio.light_attack.play()
+            scene.sound.play("light_attack")
             redrawHealthBar($.player)
           } else { // reset the card
             enterMistakeAnimState($.player)
@@ -348,6 +342,7 @@ function enterDeletingCharState(target) {
 function enterMistakeAnimState(target) {
   for (let x of target.currentHandCard.char_objs) x.setTint(0xff5555)
   target.currentHandCard.state = CardState.DOING_MISTAKE_ANIM
+  scene.sound.play("mistake", { volume: target === $.player ? 0.5 : 0.1 })
   scene.tweens.add({
     targets: target.currentHandCard.anim_container,
     props: {
@@ -574,14 +569,14 @@ function executeCardEffect(asPlayer, card) {
 
   // sfx
   if (healAmount > 0) {
-    $.audio.heal.play()
+    scene.sound.play("heal")
   }
   if (hpDamageAmount > 2) {
-    $.audio.heavy_attack.play()
+    scene.sound.play("heavy_attack")
   } else if (hpDamageAmount > 0) {
-    $.audio.light_attack.play()
+    scene.sound.play("light_attack")
   } else if (shieldWasHit) {
-    $.audio.shield_hit.play()
+    scene.sound.play("shield_hit")
   }
 
   tickStatusEffects(0)
@@ -672,11 +667,6 @@ function generateWords(forbidden_initial_characters, nwords, word_length_avg, wo
 function cleanup() {
   $.music.intro.destroy()
   $.music.loop.destroy()
-
-  $.audio.heal.destroy()
-  $.audio.light_attack.destroy()
-  $.audio.heavy_attack.destroy()
-  $.audio.shield_hit.destroy()
 
   for (let key of $.keys) {
     key.destroy()

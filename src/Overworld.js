@@ -71,14 +71,16 @@ scene.create = function(input) {
       // do nothing
     } else if (node.contents.type === NodeContentsType.ENEMY) {
       const enemy = enemies[node.contents.enemyId]
-      const enemy_obj = scene.add.text(node.x, node.y, enemy.name)
+      const enemy_obj = scene.add.bitmapText(node.x, node.y, "monoid", enemy.name)
+      enemy_obj.setScale(0.3)
       $.node_contents_layer.add(enemy_obj)
       $.enemies.push({
         enemy: enemy,
         obj: enemy_obj
       })
     } else if (node.contents.type === NodeContentsType.EXIT) {
-      const exit_obj = scene.add.text(node.x, node.y, "E")
+      const exit_obj = scene.add.bitmapText(node.x, node.y, "monoid", "E")
+      exit_obj.setScale(0.3)
       $.node_contents_layer.add(exit_obj)
     } else {
       console.log("Overworld create function: Unhandled NodeContentsType case:", node.contents.type)
@@ -87,7 +89,8 @@ scene.create = function(input) {
 
   // Render player
   const playerStartNode = floor.nodes[floor.playerStartNodeId]
-  $.player_overworld_info.obj = scene.add.text(playerStartNode.x, playerStartNode.y, "P")
+  $.player_overworld_info.obj = scene.add.bitmapText(playerStartNode.x, playerStartNode.y, "monoid", "P")
+  $.player_overworld_info.obj.setScale(0.3)
 
   refreshTargetNodeKeys()
 }
@@ -146,7 +149,8 @@ function refreshTargetNodeKeys() {
       tryTravelToNode(nodeId)
     })
     const node = $.floor.nodes[nodeId]
-    const text_obj = scene.add.text(node.x, node.y + 30, c) // TODO hardcoded
+    const text_obj = scene.add.bitmapText(node.x, node.y + 30, "monoid", c) // TODO hardcoded
+    text_obj.setScale(0.3)
     $.target_node_keys_layer.add(text_obj)
     $.target_node_keys.push({
       key_listener: key_listener,

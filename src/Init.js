@@ -13,15 +13,16 @@ scene.preload = function() {
   scene.load.audio("heavy_attack_01", "./audio/Heavy_Attack_01.mp3")
   scene.load.audio("shield_hit", "./audio/Shield_Hit_02.mp3")
   scene.load.audio("heal", "./audio/Heal_SFX.mp3")
+  scene.load.audio("mistake", "./audio/Mistake_sfx.mp3")
 
-  scene.load.bitmapFont("monoid", "./font/monoid.png", "./font/monoid.xml")
+  scene.load.bitmapFont("monoid", "./font/monoid_0.png", "./font/monoid.fnt")
 }
 
 // input.floor
 scene.create = function(input) {
   console.log("Init", input)
   $ = {}
-  $.text_obj = scene.add.text(40, 40, "Press ENTER to start")
+  $.text_obj = scene.add.bitmapText(40, 40, "monoid", "Press ENTER to start")
   $.text_obj.setFontSize(40)
   $.enter = scene.input.keyboard.addKey("ENTER", true)
 }
