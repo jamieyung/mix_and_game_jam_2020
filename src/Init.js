@@ -12,6 +12,8 @@ scene.preload = function() {
   scene.load.audio("light_attack_01", "./audio/Light_Attack_01.mp3")
   scene.load.audio("heavy_attack_01", "./audio/Heavy_Attack_01.mp3")
   scene.load.audio("heal", "./audio/Heal_SFX.mp3")
+
+  scene.load.bitmapFont("monoid", "./font/monoid.png", "./font/monoid.xml")
 }
 
 // input.floor
@@ -38,10 +40,10 @@ scene.update = function() {
           // cards.harden,
           // cards.berserk,
           // cards.poison,
-          // cards.mud,
+          cards.mud,
           // cards.glass_cannon
-          cards.verbosify,
-          cards.succinct,
+          // cards.verbosify,
+          // cards.succinct,
         ],
         gold: 0, // TODO
         ult: {}, // TODO

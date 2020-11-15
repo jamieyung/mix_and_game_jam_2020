@@ -140,6 +140,12 @@ function initHand(target, y) {
   }
 }
 
+const CardState = {
+  READY: 0,
+  DELETING_CHAR: 1,
+  READY_TO_SLIDE: 2
+}
+
 // args.forbidden_initial_characters - array of characters (case-insensitive)
 // args.card - the card from the deck
 // args.word_length_avg
@@ -149,26 +155,42 @@ function mkHandCard(args) {
 
   const root = scene.add.container(0, 0)
 
-  const card_name_text_obj = scene.add.text(0, 0, args.card.name)
-  card_name_text_obj.setColor("#3a7ea1")
-  card_name_text_obj.setFontSize(20)
+  const card_name_text_obj = scene.add.bitmapText(0, 0, "monoid", args.card.name)
+  card_name_text_obj.setTint(0x3a7ea1)
+  card_name_text_obj.setScale(0.2)
   root.add(card_name_text_obj)
 
-  const text_obj = scene.add.text(0, 15, orig_text)
-  text_obj.setFontSize(30)
-  root.add(text_obj)
+  const char_objs = []
+  for (let i = 0; i < orig_text.length; i++) {
+    const char_obj = scene.add.bitmapText(i*24, 15, "monoid", orig_text[i])
+    char_obj.setScale(0.5)
+    root.add(char_obj)
+    char_objs.push(char_obj)
+  }
 
   return {
     orig_text: orig_text,
     remaining: orig_text,
     card: args.card,
     root: root,
-    text_obj: text_obj,
+    char_objs: char_objs,
+    state: CardState.READY,
     destroy: function () {
       card_name_text_obj.destroy()
-      text_obj.destroy()
+      for (let x of char_objs) x.destroy()
       root.destroy()
     }
+  }
+}
+
+function remakeCardCharObjsBasedOnRemaining(card) {
+  for (let x of card.char_objs) x.destroy()
+  card.char_objs = []
+  for (let i = 0; i < card.remaining.length; i++) {
+    const char_obj = scene.add.bitmapText(i*24, 15, "monoid", card.remaining[i])
+    char_obj.setScale(0.5)
+    card.root.add(char_obj)
+    card.char_objs.push(char_obj)
   }
 }
 
@@ -179,6 +201,24 @@ scene.update = function(_, dt) {
     delete $.down_keys[keyCode]
   }
 
+  const xs = [$.player, $.enemy]
+  for (const target of xs) {
+    if (target.currentHandCard && target.currentHandCard.state === CardState.READY_TO_SLIDE) {
+      target.currentHandCard.state = CardState.READY
+      let head_char_obj = target.currentHandCard.char_objs.shift()
+      head_char_obj.destroy()
+      for (let x of target.currentHandCard.char_objs) x.x -= 24
+      if (target.currentHandCard.remaining.length === 0) {
+        const asPlayer = target === $.player
+        executeCardEffect(asPlayer, target.currentHandCard.card)
+        redrawCurrentHandCard(target)
+        if (target === $.enemy) {
+          $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
+        }
+      }
+    }
+  }
+
   // Handle keydown events
   for (let key of $.keys) {
     const keyCode = key.keyCode
@@ -187,25 +227,31 @@ scene.update = function(_, dt) {
     $.down_keys[keyCode] = key
 
     if ($.player.currentHandCard) {
-      const nextKeyCode = $.player.currentHandCard.remaining[0].toUpperCase().charCodeAt(0)
-      if (nextKeyCode === keyCode) {
-        $.player.currentHandCard.remaining = $.player.currentHandCard.remaining.substring(1)
-        $.player.currentHandCard.text_obj.text = $.player.currentHandCard.remaining
-        if ($.player.currentHandCard.remaining.length === 0) {
-          executeCardEffect(true, $.player.currentHandCard.card)
-          redrawCurrentHandCard($.player)
-        }
-      } else { // mistake
-        if ($.player.status_effects[StatusEffectType.GLASS_CANNON]) { // destroy card and take damage
-          redrawCurrentHandCard($.player)
-          $.player.hp = Math.max(0, $.player.hp - 2)
-          $.audio.light_attack.play()
-          redrawHealthBar($.player)
-        } else { // reset the card
-          $.player.currentHandCard.remaining = $.player.currentHandCard.orig_text
-          $.player.currentHandCard.text_obj.text = $.player.currentHandCard.remaining
-          $.player.currentHandCard.text_obj.setColor("#ffffff")
-          $.player.currentHandCard = undefined
+      if ($.player.currentHandCard.state === CardState.READY) {
+        const nextKeyCode = $.player.currentHandCard.remaining[0].toUpperCase().charCodeAt(0)
+        if (nextKeyCode === keyCode) { // success
+          $.player.currentHandCard.state = CardState.DELETING_CHAR
+          $.player.currentHandCard.remaining = $.player.currentHandCard.remaining.substring(1)
+          let head_char_obj = $.player.currentHandCard.char_objs[0]
+          scene.tweens.add({
+            targets: head_char_obj,
+            alpha: { from: 1, to: 0 },
+            duration: !!$.player.status_effects[StatusEffectType.SLOW] ? 150 : 0
+          }).on("complete", function() {
+            $.player.currentHandCard.state = CardState.READY_TO_SLIDE
+          })
+        } else { // mistake
+          if ($.player.status_effects[StatusEffectType.GLASS_CANNON]) { // destroy card and take damage
+            redrawCurrentHandCard($.player)
+            $.player.hp = Math.max(0, $.player.hp - 2)
+            $.audio.light_attack.play()
+            redrawHealthBar($.player)
+          } else { // reset the card
+            $.player.currentHandCard.remaining = $.player.currentHandCard.orig_text
+            remakeCardCharObjsBasedOnRemaining($.player.currentHandCard)
+            for (let x of $.player.currentHandCard.char_objs) x.setTint(0xffffff)
+            $.player.currentHandCard = undefined
+          }
         }
       }
     } else {
@@ -219,9 +265,9 @@ scene.update = function(_, dt) {
           redrawCard($.player, handCard)
         } else {
           handCard.remaining = handCard.remaining.substring(1)
-          handCard.text_obj.text = handCard.remaining
+          remakeCardCharObjsBasedOnRemaining(handCard)
           $.player.currentHandCard = handCard
-          handCard.text_obj.setColor("#55ff55")
+          for (let x of handCard.char_objs) x.setTint(0x55ff55)
         }
         break
       }
@@ -236,23 +282,28 @@ scene.update = function(_, dt) {
     if ($.enemy.ms_until_next_char > 0) {
       $.enemy.ms_until_next_char -= dt * dt_fac
     } else { // make enemy type a character
-      $.enemy.ms_until_next_char = 1000 / $.enemy.characters_per_second
-      if ($.enemy.characters_until_next_mistake > 0) { // successful keystroke
-        $.enemy.characters_until_next_mistake--
-        $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.remaining.substring(1)
-        $.enemy.currentHandCard.text_obj.text = $.enemy.currentHandCard.remaining
-        if ($.enemy.currentHandCard.remaining.length === 0) {
-          executeCardEffect(false, $.enemy.currentHandCard.card)
-          redrawCurrentHandCard($.enemy)
+      if ($.enemy.currentHandCard.state === CardState.READY) {
+        $.enemy.ms_until_next_char = 1000 / $.enemy.characters_per_second
+        if ($.enemy.characters_until_next_mistake > 0) { // successful keystroke
+          $.enemy.characters_until_next_mistake--
+          $.enemy.currentHandCard.state = CardState.DELETING_CHAR
+          $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.remaining.substring(1)
+          let head_char_obj = $.enemy.currentHandCard.char_objs[0]
+          scene.tweens.add({
+            targets: head_char_obj,
+            alpha: { from: 1, to: 0 },
+            duration: !!$.enemy.status_effects[StatusEffectType.SLOW] ? 150 : 0
+          }).on("complete", function() {
+            $.enemy.currentHandCard.state = CardState.READY_TO_SLIDE
+          })
+        } else { // mistake, reset the word
+          recalcEnemyCharactersUntilNextMistake()
+          $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.orig_text
+          remakeCardCharObjsBasedOnRemaining($.enemy.currentHandCard)
+          for (let x of $.enemy.currentHandCard.char_objs) x.setTint(0xffffff)
+          $.enemy.currentHandCard = undefined
           $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
         }
-      } else { // mistake, reset the word
-        recalcEnemyCharactersUntilNextMistake()
-        $.enemy.currentHandCard.remaining = $.enemy.currentHandCard.orig_text
-        $.enemy.currentHandCard.text_obj.text = $.enemy.currentHandCard.remaining
-        $.enemy.currentHandCard.text_obj.setColor("#ffffff")
-        $.enemy.currentHandCard = undefined
-        $.enemy.cur_casting_cooldown_ms = $.enemy.casting_cooldown_ms
       }
     }
   } else { // no currentHandCard
@@ -260,7 +311,7 @@ scene.update = function(_, dt) {
       $.enemy.cur_casting_cooldown_ms -= dt
     } else {
       $.enemy.currentHandCard = Phaser.Math.RND.pick($.enemy.hand)
-      $.enemy.currentHandCard.text_obj.setColor("#55ff55")
+      for (let x of $.enemy.currentHandCard.char_objs) x.setTint(0x55ff55)
     }
   }
 
@@ -547,7 +598,7 @@ function rerollCardWords(target, card) {
   const orig_text = generateWords(forbidden_initial_characters, card.cost, calcAvgWordLength(target), $.difficulty.word_length.std)
   card.orig_text = orig_text
   card.remaining = orig_text
-  card.text_obj.text = orig_text
+  remakeCardCharObjsBasedOnRemaining(card)
 }
 
 function calcAvgWordLength(target) {
